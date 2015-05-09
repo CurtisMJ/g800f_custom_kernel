@@ -1,0 +1,4 @@
+make clean
+make distclean
+make kminilte_00_defconfig
+make -j6
