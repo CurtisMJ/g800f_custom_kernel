@@ -15,11 +15,19 @@
 #include <linux/export.h>
 #include <linux/mutex.h>
 #include <linux/err.h>
+#include <sound/boeffla_sound.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/regmap.h>
 
 #include "internal.h"
+
+struct regmap *wm8994map;
+
+void regmap_passwm8994map(struct regmap *map) {
+	wm8994map = map;
+	printk("Boeffla test map received");
+}
 
 bool regmap_writeable(struct regmap *map, unsigned int reg)
 {
@@ -528,7 +536,28 @@ int _regmap_write(struct regmap *map, unsigned int reg,
 int regmap_write(struct regmap *map, unsigned int reg, unsigned int val)
 {
 	int ret;
+	int value;
+	
+	if (map == wm8994map) {
+		value = Boeffla_sound_hook_wm8994_write(reg, val);
+	} else {
+		value = val;
+	}
 
+	mutex_lock(&map->lock);
+
+	ret = _regmap_write(map, reg, value);
+
+	mutex_unlock(&map->lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(regmap_write);
+
+int regmap_write_boeffla(struct regmap *map, unsigned int reg, unsigned int val)
+{
+	int ret;
+	
 	mutex_lock(&map->lock);
 
 	ret = _regmap_write(map, reg, val);
@@ -537,7 +566,7 @@ int regmap_write(struct regmap *map, unsigned int reg, unsigned int val)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(regmap_write);
+EXPORT_SYMBOL_GPL(regmap_write_boeffla);
 
 /**
  * regmap_raw_write(): Write raw values to one or more registers

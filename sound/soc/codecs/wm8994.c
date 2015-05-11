@@ -37,6 +37,7 @@
 
 #include "wm8994.h"
 #include "wm_hubs.h"
+#include "boeffla_sound.h"
 
 #define WM1811_JACKDET_MODE_NONE  0x0000
 #define WM1811_JACKDET_MODE_JACK  0x0100
@@ -3901,6 +3902,7 @@ static int wm8994_codec_probe(struct snd_soc_codec *codec)
 
 	wm8994->hubs.codec = codec;
 	codec->control_data = control->regmap;
+	regmap_passwm8994map(codec->control_data);
 
 	snd_soc_codec_set_cache_io(codec, 16, 16, SND_SOC_REGMAP);
 
@@ -4271,6 +4273,8 @@ static int wm8994_codec_probe(struct snd_soc_codec *codec)
 					ARRAY_SIZE(wm8958_intercon));
 		break;
 	}
+	
+	Boeffla_sound_hook_wm8994_pcm_probe(codec);
 
 	return 0;
 
