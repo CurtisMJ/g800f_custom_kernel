@@ -378,7 +378,7 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 		ktd2026_set_period(6);
 		ktd2026_set_pwm_duty(PWM1, 127);
 		ktd2026_set_pwm_duty(PWM2, 127);
-		ktd2026_set_trise_tfall(0, 0, 0);
+		ktd2026_set_trise_tfall(7, 7, 0);
 		ktd2026_leds_on(LED_R, LED_EN_PWM2, led_dynamic_current);
 		break;
 
@@ -387,7 +387,7 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 		ktd2026_set_period(41);
 		ktd2026_set_pwm_duty(PWM1, 232);
 		ktd2026_set_pwm_duty(PWM2, 23);
-		ktd2026_set_trise_tfall(0, 0, 0);
+		ktd2026_set_trise_tfall(7, 7, 0);
 		ktd2026_leds_on(LED_B, LED_EN_PWM2, led_dynamic_current);
 		break;
 
@@ -396,7 +396,7 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 		ktd2026_set_period(41);
 		ktd2026_set_pwm_duty(PWM1, 232);
 		ktd2026_set_pwm_duty(PWM2, 23);
-		ktd2026_set_trise_tfall(0, 0, 0);
+		ktd2026_set_trise_tfall(7, 7, 0);
 		ktd2026_leds_on(LED_R, LED_EN_PWM2, led_dynamic_current);
 		break;
 
@@ -449,7 +449,7 @@ static void ktd2026_set_led_blink(enum ktd2026_led_enum led,
 	ktd2026_set_timerslot_control(0); /* Tslot1 */
 	ktd2026_set_period((on_time+off_time) * 4 + 2);
 	ktd2026_set_pwm_duty(PWM1, on_time*255 / (on_time + off_time));
-	ktd2026_set_trise_tfall(0, 0, 0);
+	ktd2026_set_trise_tfall(7, 7, 0);
 	pr_info("%s:on_time=%d, off_time=%d, period=%d, duty=%d\n" ,
 		__func__, on_time, off_time, (on_time+off_time) * 4 + 2,
 		on_time * 255 / (on_time + off_time) );
