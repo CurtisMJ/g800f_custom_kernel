@@ -1,0 +1,9 @@
+#!/system/bin/sh
+if [ -f $1 ];then
+    if [[ ! -z $2 ]]; then
+        echo $2 > $1
+    fi
+    allSched=`cat $1`;
+	currSched=`expr match "$allSched" '.*\[\(.*\)\].*'`;
+	echo "$currSched";
+fi

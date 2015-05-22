@@ -1,0 +1,325 @@
+{
+sections:[
+      {
+         name:CPU,
+         elements:[
+         {
+               STitleBar:{
+                  title:"Frequency Settings",
+               }
+            },
+          {
+               SSeekBar:{
+                  title:"CPU max frequency",
+                  unit:"MHz",
+                  step:100000,
+                  weight:0.001,
+                  min:400000,
+                  max:1400000,
+                  default:1400000,
+                  action:"cpuset max"
+               }
+            },
+ 	    {
+               SSeekBar:{
+                  title:"CPU min frequency",
+                  unit:"MHz",
+                  step:100000,
+                  weight:0.001,
+                  min:400000,
+                  max:1400000,
+                  default:400000,
+                  action:"cpuset min"
+               }
+            },
+			{
+				SOptionList:{
+			                  title:"CPU Governor",
+			                  description:"Try not to change to 'interactive' upon changing from it as this could cause a timer related kernel panic. I'll try and investigate the bug.",
+			                  default:"interactive",
+			                  action:"cpuset gov",
+			                  values:[
+						"interactive",
+						"performance",
+						"intelliactive",
+						"zzmoove",
+			                  ],
+			                  notify:[
+			        {
+			            on:APPLY,
+			            do:[ REFRESH, CANCEL ],
+			            to:"/sys/devices/system/cpu/cpufreq"
+			        },
+			        {
+			            on:REFRESH,
+			            do:REFRESH,
+			            to:"/sys/devices/system/cpu/cpufreq"
+			        }
+			    ]
+               }
+            },
+            {
+				SLiveLabel:{
+					title:"Current CPU Frequency",
+					refresh:1000,
+					action:"cpufreq"
+				}
+			},
+			{
+				SLiveLabel:{
+					title:"Exynos Thermal Zone 0",
+					refresh:500,
+					action:"thermal"
+				}
+			},
+			{
+               STitleBar:{
+                  title:"Tunables",
+               }
+            },
+			{
+			STreeDescriptor:{
+			    path:"/sys/devices/system/cpu/cpufreq",
+			    generic: {
+			        directory: {
+			            STreeDescriptor:{
+			                generic: {
+			                    directory: {},
+			                    element: {
+			                        SGeneric: { title:"@NAME" }
+			                    }
+			                },
+			                exclude: [
+								"freq_table",
+								"max_freq",
+								"min_freq",
+								"boostpulse",
+								"sampling_rate_current",
+								"profile"
+			                ]
+			            }
+			        }
+			    },
+			}
+			},
+         ]
+      },
+      {
+		name:Sound,
+		elements:[
+			{
+               STitleBar:{
+                  title:"Boeffla sound engine",
+               }
+            },
+            {
+				SCheckBox:{
+					label:"Boeffla sound status",
+					default:0,
+					action:"boefflasnd_run"
+				}
+			},
+			{
+				SCheckBox:{
+					label:"Privacy mode",
+					description:"Mute speaker upon removing headset jack",
+					default:0,
+					action:"boefflasnd_privmode"
+				}
+			},
+			{
+				SCheckBox:{
+					label:"DAC direct",
+					description:"Bypass analoque",
+					default:0,
+					action:"boefflasnd_dac_direc"
+				}
+			},
+			{
+				SCheckBox:{
+					label:"DAC oversanpling",
+					description:"128x oversampling",
+					default:0,
+					action:"boefflasnd_dac_over"
+				}
+			},
+			{
+				SCheckBox:{
+					label:"FLL tuning",
+					default:0,
+					action:"boefflasnd_fll"
+				}
+			},
+			{
+				SCheckBox:{
+					label:"Mono downmix",
+					default:0,
+					action:"boefflasnd_mono"
+				}
+			},
+			{
+				SCheckBox:{
+					label:"Stereo expansion",
+					default:0,
+					action:"boefflasnd_stereoexp"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"Headset Volume Left",
+					max:63,
+					min:0,
+					default:57,
+					action:"boefflasnd_headvol left"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"Headset Volume Right",
+					max:63,
+					min:0,
+					default:57,
+					action:"boefflasnd_headvol right"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"Speaker Volume",
+					max:63,
+					min:0,
+					default:57,
+					action:"boefflasnd_speakvol both"
+				}
+			},
+			{
+				STitleBar:{
+					title:"Hardware Equalizer settings"
+							}
+			},
+			{
+				SCheckBox:{
+					label:"Headphone equalizer",
+					default:0,
+					action:"boefflasnd_headeq"
+				}
+			},
+			{
+				SCheckBox:{
+					label:"Speaker tuning",
+					default:0,
+					action:"boefflasnd_speakeq"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"EQ band 1(Low)",
+					max:12,
+					min:-12,
+					default:0,
+					action:"boefflasnd_eq 0"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"EQ band 2",
+					max:12,
+					min:-12,
+					default:0,
+					action:"boefflasnd_eq 1"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"EQ band 3(Mid)",
+					max:12,
+					min:-12,
+					default:0,
+					action:"boefflasnd_eq 2"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"EQ band 4",
+					max:12,
+					min:-12,
+					default:0,
+					action:"boefflasnd_eq 3"
+				}
+			},
+			{
+				SSeekBar:{
+					title:"EQ band 5(High)",
+					max:12,
+					min:-12,
+					default:0,
+					action:"boefflasnd_eq 4"
+				}
+			},
+		]
+	  },
+	  {
+         name:I/O,
+         elements:[
+            {
+               SPane:{
+                  title:"I/O schedulers",
+                  description:"Set the active I/O elevator algorithm. The scheduler decides how to handle I/O requests and how to handle them."
+               }
+            },
+            {
+               SOptionList:{
+                  title:"Internal storage scheduler",
+                  default:cfq,
+                  action:"bracket-option /sys/block/mmcblk0/queue/scheduler",
+                  values:[
+                     noop,
+                     deadline,
+                     row,
+                     cfq,
+ 
+                  ]
+               }
+            },
+            {
+               SOptionList:{
+                  title:"SD card scheduler",
+                  default:cfq,
+                  action:"bracket-option /sys/block/mmcblk1/queue/scheduler",
+                  values:[
+                     noop,
+                     deadline,
+                     row,
+                     cfq,
+ 
+                  ]
+               }
+            },
+            {
+               SSeekBar:{
+                  title:"Internal storage read-ahead",
+                  description:"The read-ahead value on the internal phone memory.",
+                  max:2048,
+                  min:128,
+                  unit:"kB",
+                  step:128,
+                  default:256,
+                  action:"generic /sys/block/mmcblk0/queue/read_ahead_kb"
+               }
+            },
+            {
+               SSeekBar:{
+                  title:"SD card read-ahead",
+                  description:"The read-ahead value on the external SD card.",
+                  max:2048,
+                  min:128,
+                  unit:"kB",
+                  step:128,
+                  default:128,
+                  action:"generic /sys/block/mmcblk1/queue/read_ahead_kb"
+               }
+            },
+ 
+         ]
+      },
+	]
+}

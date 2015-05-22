@@ -1,0 +1,5 @@
+#!/system/bin/sh
+if [[ ! -z $1 ]];then
+	echo $1 > /sys/devices/virtual/misc/boeffla_sound/boeffla_sound;
+fi
+echo `cat /sys/devices/virtual/misc/boeffla_sound/boeffla_sound |  sed -n -e '/Boeffla sound status/ s/.*\: *//p'`;

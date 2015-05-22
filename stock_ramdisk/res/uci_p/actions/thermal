@@ -1,0 +1,4 @@
+#!/system/bin/sh
+TEMP=`cat /sys/devices/virtual/thermal/thermal_zone0/curr_temp`;
+TEMP2=`expr $TEMP / 10`
+echo "$TEMP2 C°"

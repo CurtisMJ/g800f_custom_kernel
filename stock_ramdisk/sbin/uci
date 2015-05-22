@@ -1,0 +1,10 @@
+#!/system/bin/sh
+UCI_P=/data/uci_p;
+UCI_CONFIG=$UCI_P/config.json;
+UCI_ACTION=$UCI_P/actions/;
+case "${1}" in
+  config)
+		cat $UCI_CONFIG;;
+  actionpath)
+		echo $UCI_ACTION;;
+esac;

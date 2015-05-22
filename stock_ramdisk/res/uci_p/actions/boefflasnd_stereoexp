@@ -1,0 +1,5 @@
+#!/system/bin/sh
+if [[ ! -z $1 ]];then
+	echo $1 > /sys/devices/virtual/misc/boeffla_sound/stereo_expansion;
+fi
+echo `cat /sys/devices/virtual/misc/boeffla_sound/stereo_expansion |  sed -n -e '/Stereo expansion/ s/.*\: *//p'`;

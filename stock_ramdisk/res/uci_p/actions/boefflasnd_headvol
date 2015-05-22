@@ -1,0 +1,27 @@
+#!/system/bin/sh
+RAW="/sys/devices/virtual/misc/boeffla_sound/headphone_volume";
+LEFT_RAW=`cat $RAW | sed -n '2p'`;
+RIGHT_RAW=`cat $RAW | sed -n '3p'`;
+LEFT=`echo $LEFT_RAW |  sed -n -e '/Left/ s/.*\: *//p'`;
+RIGHT=`echo $RIGHT_RAW |  sed -n -e '/Right/ s/.*\: *//p'`;
+if [[ ! -z $1 ]];then
+	if [[ ! -z $2 ]];then
+		case $1 in
+			left)
+			LEFT=$2;
+			;;
+			right)
+			RIGHT=$2;
+			;;
+		esac;
+		echo "$LEFT $RIGHT" > /sys/devices/virtual/misc/boeffla_sound/headphone_volume;
+	fi
+	case $1 in
+		left)
+		echo $LEFT;
+		;;
+		right)
+		echo $RIGHT;
+		;;
+	esac;
+fi

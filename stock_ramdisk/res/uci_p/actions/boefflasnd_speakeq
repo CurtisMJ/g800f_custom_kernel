@@ -1,0 +1,5 @@
+#!/system/bin/sh
+if [[ ! -z $1 ]];then
+	echo $1 > /sys/devices/virtual/misc/boeffla_sound/speaker_tuning;
+fi
+echo `cat /sys/devices/virtual/misc/boeffla_sound/speaker_tuning |  sed -n -e '/Speaker tuning/ s/.*\: *//p'`;
