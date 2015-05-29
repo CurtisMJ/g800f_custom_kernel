@@ -50,6 +50,10 @@
 #include <mach/map.h>
 #include <mach/sec_debug.h>
 
+#ifdef CONFIG_EXYNOS4_EXPORT_TEMP
+#include <linux/exynos4_export_temp.h>
+#endif
+
 /*Exynos generic registers*/
 #define EXYNOS_TMU_REG_TRIMINFO		0x0
 #define EXYNOS_TMU_REG_CONTROL		0x20
@@ -163,6 +167,9 @@ static void __iomem *exynos4_base_drex0;
 static void __iomem *exynos4_base_drex1;
 #endif
 
+#ifdef CONFIG_EXYNOS4_EXPORT_TEMP
+static unsigned int tmu_curr_temperature;
+#endif
 
 static int old_cold;
 static int old_hot;
@@ -920,7 +927,10 @@ static int exynos_tmu_read(struct exynos_tmu_data *data)
 		hot_event = TMU_THR_LV1;
 
 	sec_debug_aux_log(SEC_DEBUG_AUXLOG_THERMAL_CHANGE, "[TMU] %d", temp);
-
+	//printk("[TMU] %s : Thermal Read %d C", __func__, temp); Found it!
+#ifdef CONFIG_EXYNOS4_EXPORT_TEMP
+	tmu_curr_temperature = temp;
+#endif
 	th_zone->therm_dev->last_temperature = temp;
 	exynos_tmu_call_notifier(cold_event, hot_event);
 	sec_debug_aux_log(SEC_DEBUG_AUXLOG_THERMAL_CHANGE, "[TMU] alltemp[0]: %d", alltemp[0]);
@@ -1270,6 +1280,10 @@ static int __devinit exynos_tmu_probe(struct platform_device *pdev)
 
 	/* For low temperature compensation when boot time */
 	exynos_tmu_call_notifier(1, 0);
+	
+#ifdef CONFIG_EXYNOS4_EXPORT_TEMP
+	tmu_curr_temperature = 35; // seems reasonable :-|
+#endif
 
 	return 0;
 
@@ -1336,6 +1350,14 @@ static int __devexit exynos_tmu_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#ifdef CONFIG_EXYNOS4_EXPORT_TEMP
+unsigned int get_exynos4_temperature(void)
+{
+	return tmu_curr_temperature;
+}
+EXPORT_SYMBOL(get_exynos4_temperature);
+#endif
 
 #ifdef CONFIG_PM
 static int exynos_tmu_suspend(struct platform_device *pdev, pm_message_t state)

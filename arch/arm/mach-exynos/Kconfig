@@ -1961,3 +1961,11 @@ config TIMA_TEST_INFRA
 	default n
 	help
 	  Kernel bits of the TIMA test infrastructure
+
+config EXYNOS4_EXPORT_TEMP
+	bool "Support for CPU temperature export from exynos3470"
+	depends on EXYNOS_DEV_TMU
+	help
+	  Exports current CPU temperature from Exynos4(This version for 3470) TMU to be able to
+	  use it externally from the driver. You can use the special function
+	  get_exynos4_temperature for that purpose after activating this option.
