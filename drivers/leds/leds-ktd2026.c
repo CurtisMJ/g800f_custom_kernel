@@ -822,7 +822,7 @@ static ssize_t fade_store(struct device *dev,
 
 	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
-	if !((val == 0) || (val == 1))
+	if (!((val == 0) || (val == 1)))
 		return -EINVAL;
 	
 	fading_status = val;
@@ -869,7 +869,7 @@ static struct attribute *led_class_attrs[] = {
 	&dev_attr_delay_off.attr,
 	&dev_attr_blink.attr,
 #ifdef FADING_LED
-	&dev_attr_fade.attr
+	&dev_attr_fade.attr,
 #endif
 	NULL,
 };
