@@ -26,6 +26,10 @@
 #include <linux/rtc.h>
 #include <linux/reboot.h>
 #include <linux/syscalls.h> /* sys_sync */
+#include <linux/lcd_notify.h>
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
 
 #include <video/mipi_display.h>
 
@@ -824,6 +828,7 @@ static int ea8061v_power_on(struct lcd_info *lcd)
 	int ret;
 
 	dev_info(&lcd->ld->dev, "+ %s\n", __func__);
+	lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
 
 	ret = ea8061v_ldi_init(lcd);
 	if (ret) {
@@ -846,7 +851,10 @@ static int ea8061v_power_on(struct lcd_info *lcd)
 
 	if (lcd->need_update)
 	update_brightness(lcd, 1);
-
+	lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#endif
 	dev_info(&lcd->ld->dev, "- %s\n", __func__);
 err:
 	return ret;
@@ -857,6 +865,7 @@ static int ea8061v_power_off(struct lcd_info *lcd)
 	int ret;
 
 	dev_info(&lcd->ld->dev, "+ %s\n", __func__);
+	lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
 
 	mutex_lock(&lcd->bl_lock);
 	lcd->ldi_enable = 0;
@@ -864,6 +873,10 @@ static int ea8061v_power_off(struct lcd_info *lcd)
 
 	ret = ea8061v_ldi_disable(lcd);
 
+	lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#endif
 	dev_info(&lcd->ld->dev, "- %s\n", __func__);
 
 	return ret;
