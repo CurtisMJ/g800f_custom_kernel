@@ -24,6 +24,9 @@
 #include <linux/leds-ktd2026.h>
 #include <linux/workqueue.h>
 #include <linux/wakelock.h>
+#ifdef CONFIG_FADE_KTD2026
+#define FADING_LED
+#endif
 
 #undef AN3029_COMPATIBLE
 
@@ -119,6 +122,10 @@ struct ktd2026_data {
 };
 
 struct i2c_client *b_client;
+
+#ifdef FADING_LED
+unsigned int fading_status;
+#endif
 
 #define SEC_LED_SPECIFIC
 
@@ -378,7 +385,14 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 		ktd2026_set_period(6);
 		ktd2026_set_pwm_duty(PWM1, 127);
 		ktd2026_set_pwm_duty(PWM2, 127);
-		ktd2026_set_trise_tfall(7, 7, 0);
+#ifdef FADING_LED
+		if (fading_status)
+			ktd2026_set_trise_tfall(7, 7, 0);
+		else
+			ktd2026_set_trise_tfall(0, 0, 0);
+#else
+		ktd2026_set_trise_tfall(0, 0, 0);
+#endif
 		ktd2026_leds_on(LED_R, LED_EN_PWM2, led_dynamic_current);
 		break;
 
@@ -387,7 +401,14 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 		ktd2026_set_period(41);
 		ktd2026_set_pwm_duty(PWM1, 232);
 		ktd2026_set_pwm_duty(PWM2, 23);
-		ktd2026_set_trise_tfall(7, 7, 0);
+#ifdef FADING_LED
+		if (fading_status)
+			ktd2026_set_trise_tfall(7, 7, 0);
+		else
+			ktd2026_set_trise_tfall(0, 0, 0);
+#else
+		ktd2026_set_trise_tfall(0, 0, 0);
+#endif
 		ktd2026_leds_on(LED_B, LED_EN_PWM2, led_dynamic_current);
 		break;
 
@@ -396,7 +417,14 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 		ktd2026_set_period(41);
 		ktd2026_set_pwm_duty(PWM1, 232);
 		ktd2026_set_pwm_duty(PWM2, 23);
-		ktd2026_set_trise_tfall(7, 7, 0);
+#ifdef FADING_LED
+		if (fading_status)
+			ktd2026_set_trise_tfall(7, 7, 0);
+		else
+			ktd2026_set_trise_tfall(0, 0, 0);
+#else
+		ktd2026_set_trise_tfall(0, 0, 0);
+#endif
 		ktd2026_leds_on(LED_R, LED_EN_PWM2, led_dynamic_current);
 		break;
 
@@ -449,7 +477,14 @@ static void ktd2026_set_led_blink(enum ktd2026_led_enum led,
 	ktd2026_set_timerslot_control(0); /* Tslot1 */
 	ktd2026_set_period((on_time+off_time) * 4 + 2);
 	ktd2026_set_pwm_duty(PWM1, on_time*255 / (on_time + off_time));
-	ktd2026_set_trise_tfall(7, 7, 0);
+#ifdef FADING_LED
+		if (fading_status)
+			ktd2026_set_trise_tfall(7, 7, 0);
+		else
+			ktd2026_set_trise_tfall(0, 0, 0);
+#else
+		ktd2026_set_trise_tfall(0, 0, 0);
+#endif
 	pr_info("%s:on_time=%d, off_time=%d, period=%d, duty=%d\n" ,
 		__func__, on_time, off_time, (on_time+off_time) * 4 + 2,
 		on_time * 255 / (on_time + off_time) );
@@ -778,10 +813,37 @@ static ssize_t led_blink_store(struct device *dev,
 	return len;
 }
 
+#ifdef FADING_LED
+static ssize_t fade_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t len)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 0, &val))
+		return -EINVAL;
+	if !((val == 0) || (val == 1))
+		return -EINVAL;
+	
+	fading_status = val;
+	
+	return len;
+}
+
+static ssize_t fade_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", fading_status);
+}
+#endif
+
 /* permission for sysfs node */
 static DEVICE_ATTR(delay_on, 0644, led_delay_on_show, led_delay_on_store);
 static DEVICE_ATTR(delay_off, 0644, led_delay_off_show, led_delay_off_store);
 static DEVICE_ATTR(blink, 0644, NULL, led_blink_store);
+#ifdef FADING_LED
+static DEVICE_ATTR(fade, 0644, fade_show, fade_store);
+#endif
 
 #ifdef SEC_LED_SPECIFIC
 /* below nodes is SAMSUNG specific nodes */
@@ -806,6 +868,9 @@ static struct attribute *led_class_attrs[] = {
 	&dev_attr_delay_on.attr,
 	&dev_attr_delay_off.attr,
 	&dev_attr_blink.attr,
+#ifdef FADING_LED
+	&dev_attr_fade.attr
+#endif
 	NULL,
 };
 
@@ -935,6 +1000,9 @@ static int __devinit ktd2026_probe(struct i2c_client *client,
 		goto exit;
 	}
 #endif
+
+	fading_status = 0;
+	
 	return ret;
 exit:
 	mutex_destroy(&data->mutex);

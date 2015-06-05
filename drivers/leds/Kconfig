@@ -419,6 +419,12 @@ config LEDS_KTD2026
 	  KTD2026 is a fully programmable, constant current
 	  three channel LED driver with flexible control interface.
 
+config FADE_KTD2026
+	tristate "Fading notification patterns for KTD2026 LED"
+	depends on LEDS_KTD2026
+	  help
+	  This option enables support fading notification patterns
+
 config LEDS_OT200
 	tristate "LED support for the Bachmann OT200"
 	depends on LEDS_CLASS && HAS_IOMEM
