@@ -731,6 +731,31 @@ static ssize_t sm5502_muic_set_apo_factory(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_MUIC_SM5502_SUPPORT_OTG
+unsigned int otg_status;
+static ssize_t otg_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t len)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 0, &val))
+		return -EINVAL;
+	if (!((val == 0) || (val == 1)))
+		return -EINVAL;
+	
+	otg_status = val;
+	
+	return len;
+}
+
+static ssize_t otg_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", otg_status);
+}
+#endif
+
 static DEVICE_ATTR(uart_en, 0664, sm5502_muic_show_uart_en, sm5502_muic_set_uart_en);
 static DEVICE_ATTR(uart_sel, 0664, sm5502_muic_show_uart_sel,
 		sm5502_muic_set_uart_sel);
@@ -754,6 +779,9 @@ static DEVICE_ATTR(audio_path, 0664,
 static DEVICE_ATTR(apo_factory, 0664,
 		sm5502_muic_show_apo_factory,
 		sm5502_muic_set_apo_factory);
+#ifdef CONFIG_MUIC_SM5502_SUPPORT_OTG	
+static DEVICE_ATTR(otg, 0644, otg_show, otg_store);
+#endif
 
 static struct attribute *sm5502_muic_attributes[] = {
 	&dev_attr_uart_en.attr,
@@ -773,6 +801,9 @@ static struct attribute *sm5502_muic_attributes[] = {
 	&dev_attr_attached_dev.attr,
 	&dev_attr_audio_path.attr,
 	&dev_attr_apo_factory.attr,
+#ifdef CONFIG_MUIC_SM5502_SUPPORT_OTG	
+	&dev_attr_otg.attr,
+#endif
 	NULL
 };
 
@@ -1801,7 +1832,8 @@ static void sm5502_muic_detect_dev(struct sm5502_muic_data *muic_data)
 		break;
 	case DEV_TYPE1_USB_OTG:
 #ifdef CONFIG_MUIC_SM5502_SUPPORT_OTG
-		intr = MUIC_INTR_ATTACH;
+		if (otg_status)
+			intr = MUIC_INTR_ATTACH;
 #endif
 		new_dev = ATTACHED_DEV_OTG_MUIC;
 		pr_info("%s : USB_OTG DETECTED\n", MUIC_DEV_NAME);
@@ -2291,6 +2323,10 @@ static int sm5502_muic_probe(struct i2c_client *i2c,
 
 	INIT_DELAYED_WORK(&muic_data->usb_work, sm5502_muic_usb_detect);
 	schedule_delayed_work(&muic_data->usb_work, msecs_to_jiffies(17000));
+	
+#ifdef CONFIG_MUIC_SM5502_SUPPORT_OTG
+	otg_status = 0;
+#endif
 
 	return 0;
 
