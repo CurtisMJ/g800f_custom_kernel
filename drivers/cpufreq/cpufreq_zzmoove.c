@@ -66,8 +66,8 @@
 #include <linux/msm_tsens.h>
 #endif
 
-// #define ENABLE_INPUTBOOSTER			// ZZ: enable/disable inputbooster support
-// #define ENABLE_WORK_RESTARTLOOP		// ZZ: enable/disable restart loop for touchboost
+#define ENABLE_INPUTBOOSTER			// ZZ: enable/disable inputbooster support
+#define ENABLE_WORK_RESTARTLOOP		// ZZ: enable/disable restart loop for touchboost
 
 #ifdef ENABLE_INPUTBOOSTER
 #include <linux/slab.h>
