@@ -8,6 +8,8 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+ 
+#define CYTTSP5_DT2W
 
 #include <linux/module.h>
 
@@ -32,6 +34,9 @@
 #include <linux/wakelock.h>
 #ifdef CONFIG_INPUT_BOOSTER
 #include <linux/input/input_booster.h>
+#endif
+#ifdef CYTTSP5_DT2W
+#include <linux/cyttsp5/cyttsp5_core.h>
 #endif
 
 struct gpio_button_data {
@@ -1162,6 +1167,10 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	input_sync(input);
 
 	device_init_wakeup(&pdev->dev, wakeup);
+	
+#ifdef CYTTSP5_DT2W
+	cyttsp5_setpwrdev(input);
+#endif
 
 	return 0;
 

@@ -24,12 +24,19 @@
 #include "cyttsp5_regs.h"
 
 #define CYTTSP5_USE_SLEEP 0
+#define CYTTSP5_DT2W
 
 MODULE_FIRMWARE(CY_FW_FILE_NAME);
 
 static const char *cy_driver_core_name = CYTTSP5_CORE_NAME;
 static const char *cy_driver_core_version = CY_DRIVER_VERSION;
 static const char *cy_driver_core_date = CY_DRIVER_DATE;
+
+#ifdef CYTTSP5_DT2W
+unsigned int dt2w_status = 1; 
+struct input_dev *pwr_dev;
+static DEFINE_MUTEX(pwrkeyworklock);
+#endif
 
 struct cyttsp5_hid_field {
 	int report_count;
@@ -5568,6 +5575,60 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 	return size;
 }
 
+#ifdef CYTTSP5_DT2W
+static ssize_t cyttsp5_dt2w_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	ssize_t ret;
+
+	ret = snprintf(buf, CY_MAX_PRBUF_SIZE, "0x%02X\n",
+			dt2w_status);
+	return ret;
+}
+
+static ssize_t cyttsp5_dt2w_status_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long value;
+	int ret;
+
+	ret = kstrtoul(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	dt2w_status = value;
+
+	if (ret)
+		return ret;
+
+	return size;
+}
+
+unsigned int cyttsp5_dt2w_check(void)
+{
+	return dt2w_status;
+}
+
+void cyttsp5_setpwrdev(struct input_dev *input_device)
+{
+	pwr_dev = input_device;
+}
+
+void cyttsp5_presspwr(void)
+{
+	if (!mutex_trylock(&pwrkeyworklock))
+                return;
+	input_event(pwr_dev, EV_KEY, KEY_POWER, 1);
+	input_event(pwr_dev, EV_SYN, 0, 0);
+	msleep(100);
+	input_event(pwr_dev, EV_KEY, KEY_POWER, 0);
+	input_event(pwr_dev, EV_SYN, 0, 0);
+	msleep(100);
+	mutex_unlock(&pwrkeyworklock);
+	printk(KERN_INFO "%s: Turn it on\n", __func__);
+}
+#endif
+
 static struct device_attribute attributes[] = {
 	__ATTR(ic_ver, S_IRUGO, cyttsp5_ic_ver_show, NULL),
 	__ATTR(drv_ver, S_IRUGO, cyttsp5_drv_ver_show, NULL),
@@ -5580,6 +5641,11 @@ static struct device_attribute attributes[] = {
 	__ATTR(easy_wakeup_gesture, S_IRUSR | S_IWUSR,
 		cyttsp5_easy_wakeup_gesture_show,
 		cyttsp5_easy_wakeup_gesture_store),
+#ifdef CYTTSP5_DT2W
+	__ATTR(dt2w_status, S_IRUSR | S_IWUSR,
+		cyttsp5_dt2w_status_show,
+		cyttsp5_dt2w_status_store),
+#endif
 };
 
 static int add_sysfs_interfaces(struct device *dev)

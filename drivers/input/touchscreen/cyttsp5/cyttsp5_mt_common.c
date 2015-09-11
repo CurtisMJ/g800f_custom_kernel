@@ -22,12 +22,20 @@
  */
 
 #include "cyttsp5_regs.h"
+#include "cyttsp5_core.h"
 #include <linux/input/mt.h>
 
 #define CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_MT_B
 #define CYTTSP5_TOUCHLOG_ENABLE 0
+#define CYTTSP5_DT2W
+
 /*#define REPORT_XY_WHEN_LIFTOFF*/
 #define FORCE_SATISFY_PALMPAUSE_FOR_LARGEOBJ
+#ifdef CYTTSP5_DT2W
+	unsigned int dt2w_active = 0;
+	unsigned int dt2w_keyflag = 0;
+	unsigned int dt2w_touchCount = 0;
+#endif
 
 
 #if TOUCH_BOOSTER
@@ -592,6 +600,19 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 		cyttsp5_get_touch(md, tch, si->xy_data +
 			(i * si->desc.tch_record_size));
 
+#ifdef CYTTSP5_DT2W
+		if ((cyttsp5_dt2w_check() > 0) && !(dt2w_keyflag > 0))
+		{
+			dt2w_touchCount++;
+			tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touch detected! # %d\n", __func__, dt2w_touchCount);
+			if (dt2w_touchCount > 1) {
+				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
+				dt2w_keyflag = 1;
+				cyttsp5_presspwr();
+			}
+			return;
+		}
+#endif
 		/*  Discard proximity event */
 		if (tch->abs[CY_TCH_O] == CY_OBJ_PROXIMITY) {
 			dev_vdbg(dev, "%s: Discarding proximity event\n",
@@ -725,7 +746,6 @@ cyttsp5_get_mt_touches_pr_tch:
 	else
 		set_dvfs_lock(md, 0, false);
 #endif
-
 	md->num_prv_tch = num_cur_tch;
 
 	return;
@@ -898,6 +918,14 @@ void cyttsp5_mt_stylus_enable(struct device *dev, bool enable)
 static int cyttsp5_mt_open(struct input_dev *input)
 {
 	struct device *dev = input->dev.parent;
+#ifdef CYTTSP5_DT2W
+	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0))
+	{
+		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W\n", __func__);
+		dt2w_active = 0;
+		return 0;
+	}
+#endif
 
 	tsp_debug_dbg(true, dev, "%s:\n", __func__);
 
@@ -926,6 +954,17 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	struct device *dev = input->dev.parent;
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	struct cyttsp5_mt_data *md = &cd->md;
+	
+#ifdef CYTTSP5_DT2W
+	if (cyttsp5_dt2w_check() > 0)
+	{
+		tsp_debug_dbg(true, dev, "%s:Prohibit touchscreen shutdown for DT2W\n", __func__);
+		dt2w_active = 1;
+		dt2w_keyflag = 0;
+		dt2w_touchCount = 0;
+		return;
+	}
+#endif
 
 	tsp_debug_dbg(true, dev, "%s:\n", __func__);
 
@@ -954,6 +993,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 
 	/* pm_runtime_put(dev); */
 	cyttsp5_core_suspend(dev);
+	
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND

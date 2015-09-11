@@ -20,6 +20,7 @@
  * Contact Cypress Semiconductor at www.cypress.com <ttdrivers@cypress.com>
  *
  */
+ 
 
 #ifndef _LINUX_CYTTSP5_CORE_H
 #define _LINUX_CYTTSP5_CORE_H
@@ -54,6 +55,11 @@ __stringify(CY_DRIVER_NAME)		    \
 /* FW VERSION */
 #define CY_HW_VERSION 0x02
 #define CY_FW_VERSION 0x1900
+
+#define CYTTSP5_DT2W
+#ifdef CYTTSP5_DT2W
+#include <linux/input.h>
+#endif
 
 enum cyttsp5_core_platform_flags {
 	CY_CORE_FLAG_NONE,
@@ -161,4 +167,7 @@ struct cyttsp5_platform_data {
 };
 
 void tsp_charger_inform(bool en);
+#ifdef CYTTSP5_DT2W
+void cyttsp5_setpwrdev(struct input_dev *input_device);
+#endif
 #endif /* _LINUX_CYTTSP5_CORE_H */
