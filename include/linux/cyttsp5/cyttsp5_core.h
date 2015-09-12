@@ -59,6 +59,7 @@ __stringify(CY_DRIVER_NAME)		    \
 #define CYTTSP5_DT2W
 #ifdef CYTTSP5_DT2W
 #include <linux/input.h>
+#include <linux/dc_motor.h>
 #endif
 
 enum cyttsp5_core_platform_flags {
@@ -169,5 +170,6 @@ struct cyttsp5_platform_data {
 void tsp_charger_inform(bool en);
 #ifdef CYTTSP5_DT2W
 void cyttsp5_setpwrdev(struct input_dev *input_device);
+void cyttsp5_setvibdev(struct dc_motor_drvdata *vib_device);
 #endif
 #endif /* _LINUX_CYTTSP5_CORE_H */

@@ -20,11 +20,15 @@
  * Contact Cypress Semiconductor at www.cypress.com <ttdrivers@cypress.com>
  *
  */
+ 
+#define CYTTSP5_DT2W
 
 #include "cyttsp5_regs.h"
+#ifdef CYTTSP5_DT2W
+#include <linux/dc_motor.h>
+#endif
 
 #define CYTTSP5_USE_SLEEP 0
-#define CYTTSP5_DT2W
 
 MODULE_FIRMWARE(CY_FW_FILE_NAME);
 
@@ -35,7 +39,9 @@ static const char *cy_driver_core_date = CY_DRIVER_DATE;
 #ifdef CYTTSP5_DT2W
 unsigned int dt2w_status = 1; 
 struct input_dev *pwr_dev;
+struct dc_motor_drvdata *vib_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
+
 #endif
 
 struct cyttsp5_hid_field {
@@ -5612,21 +5618,41 @@ unsigned int cyttsp5_dt2w_check(void)
 void cyttsp5_setpwrdev(struct input_dev *input_device)
 {
 	pwr_dev = input_device;
+	printk(KERN_INFO "%s: DT2W Specific input device received\n", __func__);
+}
+
+void cyttsp5_setvibdev(struct dc_motor_drvdata *vib_device) 
+{
+	vib_dev = vib_device;
+	printk(KERN_INFO "%s: DT2W Specific vibrator device received\n", __func__);
 }
 
 void cyttsp5_presspwr(void)
 {
-	if (!mutex_trylock(&pwrkeyworklock))
-                return;
-	input_event(pwr_dev, EV_KEY, KEY_POWER, 1);
-	input_event(pwr_dev, EV_SYN, 0, 0);
-	msleep(100);
-	input_event(pwr_dev, EV_KEY, KEY_POWER, 0);
-	input_event(pwr_dev, EV_SYN, 0, 0);
-	msleep(100);
-	mutex_unlock(&pwrkeyworklock);
-	printk(KERN_INFO "%s: Turn it on\n", __func__);
+	if (pwr_dev)
+	{
+		if (!mutex_trylock(&pwrkeyworklock))
+					return;
+		input_event(pwr_dev, EV_KEY, KEY_POWER, 1);
+		input_event(pwr_dev, EV_SYN, 0, 0);
+		msleep(100);
+		input_event(pwr_dev, EV_KEY, KEY_POWER, 0);
+		input_event(pwr_dev, EV_SYN, 0, 0);
+		msleep(100);
+		mutex_unlock(&pwrkeyworklock);
+		printk(KERN_INFO "%s: Turn it on\n", __func__);
+	}
 }
+
+void cyttsp5_vibrate(int value)
+{
+	if (vib_dev)
+	{
+		printk(KERN_INFO "%s: [VIB]Timeout: %d\n", __func__, value);
+		vib_dev->dev.enable(&vib_dev->dev, value);
+	}
+}
+
 #endif
 
 static struct device_attribute attributes[] = {

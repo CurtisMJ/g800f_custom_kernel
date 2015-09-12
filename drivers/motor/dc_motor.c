@@ -12,6 +12,8 @@
  * GNU General Public License for more details.
  *
  */
+ 
+#define CYTTSP5_DT2W
 
 #include <linux/hrtimer.h>
 #include <linux/err.h>
@@ -29,17 +31,9 @@
 #include <linux/timed_output.h>
 #include <linux/dc_motor.h>
 #include <linux/fs.h>
-
-struct dc_motor_drvdata {
-	struct timed_output_dev dev;
-	struct hrtimer timer;
-	struct work_struct work;
-	void (*power) (bool on);
-	spinlock_t lock;
-	bool running;
-	int timeout;
-	int max_timeout;
-};
+#ifdef CYTTSP5_DT2W
+#include <linux/cyttsp5/cyttsp5_core.h>
+#endif
 
 static enum hrtimer_restart dc_motor_timer_func(struct hrtimer *_timer)
 {
@@ -140,6 +134,9 @@ static int __devinit dc_motor_driver_probe(struct platform_device *pdev)
 			"[VIB] Failed to register timed_output : -%d\n", ret);
 		goto err_to_dev_reg;
 	}
+#ifdef CYTTSP5_DT2W
+	cyttsp5_setvibdev(ddata);
+#endif
 
 	return 0;
 

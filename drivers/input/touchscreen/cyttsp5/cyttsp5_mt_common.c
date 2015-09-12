@@ -32,9 +32,15 @@
 /*#define REPORT_XY_WHEN_LIFTOFF*/
 #define FORCE_SATISFY_PALMPAUSE_FOR_LARGEOBJ
 #ifdef CYTTSP5_DT2W
-	unsigned int dt2w_active = 0;
-	unsigned int dt2w_keyflag = 0;
-	unsigned int dt2w_touchCount = 0;
+#define MS_TO_NS(x)	(x * 1E6L)
+unsigned int dt2w_active = 0;
+unsigned int dt2w_keyflag = 0;
+unsigned int dt2w_touchCount = 0;
+unsigned int dt2w_timerFlag = 0;
+static struct hrtimer dt2w_timer;
+static ktime_t dt2w_ktime;
+void cyttsp5_dt2w_timerStart(void);
+void cyttsp5_dt2w_timerCancel(void);
 #endif
 
 
@@ -603,12 +609,21 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 #ifdef CYTTSP5_DT2W
 		if ((cyttsp5_dt2w_check() > 0) && !(dt2w_keyflag > 0))
 		{
-			dt2w_touchCount++;
-			tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touch detected! # %d\n", __func__, dt2w_touchCount);
-			if (dt2w_touchCount > 1) {
-				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
-				dt2w_keyflag = 1;
-				cyttsp5_presspwr();
+			//tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touch event detected! Ignoring rest of procedure...\n", __func__);
+			if ((tch->abs[CY_TCH_O] != CY_OBJ_HOVER) &&
+				(tch->abs[CY_TCH_E] == CY_EV_TOUCHDOWN))
+			{
+				dt2w_touchCount++;
+				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touchdown detected! # %d\n", __func__, dt2w_touchCount);
+				if (dt2w_touchCount > 1) {
+					cyttsp5_dt2w_timerCancel();
+					cyttsp5_vibrate(60);
+					tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
+					dt2w_keyflag = 1;
+					cyttsp5_presspwr();
+				} else {
+					cyttsp5_dt2w_timerStart();
+				}
 			}
 			return;
 		}
@@ -1148,6 +1163,43 @@ static int cyttsp5_setup_input_attention(struct device *dev)
 	return rc;
 }
 
+#ifdef CYTTSP5_DT2W
+enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
+{
+	printk(KERN_INFO "%s: DT2W Timer finished, touch count reset\n", __func__);
+	dt2w_touchCount = 0;
+  	return HRTIMER_NORESTART;
+}
+
+void cyttsp5_dt2w_timerStart(void)
+{
+	if (dt2w_timerFlag)
+	{
+		printk(KERN_INFO "%s: DT2W Timer started.\n", __func__);
+		hrtimer_start( &dt2w_timer, dt2w_ktime, HRTIMER_MODE_REL );	
+	}
+}
+
+void cyttsp5_dt2w_timerCancel(void)
+{
+	if (dt2w_timerFlag)
+	{
+		printk(KERN_INFO "%s: DT2W Timer canceled.\n", __func__);
+		hrtimer_cancel(&dt2w_timer);	
+	}
+}
+
+void cyttsp5_dt2w_timerInit(void)
+{
+	unsigned long delay_in_ms = 500L;
+	printk(KERN_INFO "%s: Setting up DT2W timer\n", __func__);
+	hrtimer_init( &dt2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+  	dt2w_ktime = ktime_set( 0, MS_TO_NS(delay_in_ms) );
+  	dt2w_timer.function = &cyttsp5_dt2w_hrtimer_callback;
+  	dt2w_timerFlag = 1;
+}
+#endif
+
 int cyttsp5_mt_probe(struct device *dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
@@ -1219,6 +1271,9 @@ int cyttsp5_mt_probe(struct device *dev)
 #endif
 
 	tsp_debug_dbg(false, dev, "%s:done\n", __func__);
+#ifdef CYTTSP5_DT2W
+	cyttsp5_dt2w_timerInit();
+#endif
 	return 0;
 
 error_init_input:

@@ -16,9 +16,23 @@
 #ifndef _LINUX_SEC_VIBRATOR_H
 #define _LINUX_SEC_VIBRATOR_H
 
+#include <linux/timed_output.h>
+#include <linux/hrtimer.h>
+
 struct dc_motor_platform_data {
 	int max_timeout;
 	void (*power) (bool on);
+};
+
+struct dc_motor_drvdata {
+	struct timed_output_dev dev;
+	struct hrtimer timer;
+	struct work_struct work;
+	void (*power) (bool on);
+	spinlock_t lock;
+	bool running;
+	int timeout;
+	int max_timeout;
 };
 
 #endif
