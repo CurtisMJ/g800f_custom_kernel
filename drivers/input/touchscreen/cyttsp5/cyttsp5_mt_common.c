@@ -607,7 +607,7 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 			(i * si->desc.tch_record_size));
 
 #ifdef CYTTSP5_DT2W
-		if ((cyttsp5_dt2w_check() > 0) && !(dt2w_keyflag > 0))
+		if ((cyttsp5_dt2w_check() > 0) && !(dt2w_keyflag > 0) && (dt2w_active))
 		{
 			//tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touch event detected! Ignoring rest of procedure...\n", __func__);
 			if ((tch->abs[CY_TCH_O] != CY_OBJ_HOVER) &&
