@@ -1176,7 +1176,7 @@ release_exclusive:
 check_rc:
 	_check_rc(sfd, rc);
 #ifdef CYTTSP5_DT2W
-	cyttsp5_dt2w_viewcoverNotify(sfd->view_cover_closed);
+	cyttsp5_dt2w_viewcoverNotify(sfd->dev, sfd->view_cover_closed);
 #endif
 }
 
