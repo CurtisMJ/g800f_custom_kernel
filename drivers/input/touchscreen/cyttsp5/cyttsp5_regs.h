@@ -842,6 +842,12 @@ struct cyttsp5_sfd_idac {
 	u8 lidac_max;
 };
 
+struct factory_cmd {
+	struct list_head list;
+	const char *cmd_name;
+	void (*cmd_func)(void *device_data);
+};
+
 struct cyttsp5_samsung_factory_data {
 	struct device *dev;
 	struct device *factory_dev;

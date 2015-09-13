@@ -681,6 +681,7 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 			value = tch->abs[CY_TCH_X + j];
 			input_report_abs(md->input, sig, value);
 		}
+		
 
 		/* Get the extended touch fields */
 #ifdef SAMSUNG_TOUCH_MODE
@@ -977,7 +978,9 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	cyttsp5_core_resume(dev);
 	return 0;
 }
-
+#ifdef CYTTSP5_DT2W
+void cyttsp5_hover_command(struct device *_dev, int value);
+#endif
 static void cyttsp5_mt_close(struct input_dev *input)
 {
 	struct device *dev = input->dev.parent;
@@ -991,7 +994,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		dt2w_active = 1;
 		dt2w_keyflag = 0;
 		dt2w_touchCount = 0;
-		cyttsp5_mt_glove_enable(dev, true);
+		cyttsp5_hover_command(dev, 0);
 		return;
 	}
 #endif
@@ -1179,6 +1182,30 @@ static int cyttsp5_setup_input_attention(struct device *dev)
 }
 
 #ifdef CYTTSP5_DT2W
+void cyttsp5_hover_command(struct device *_dev, int value)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(_dev);
+	struct cyttsp5_samsung_factory_data *sfd = &cd->sfd;
+	struct factory_cmd *factory_cmd_ptr = NULL;
+	char strbuff[FACTORY_CMD_STR_LEN] = "hover_enable";
+	bool cmd_found = false;
+	printk(KERN_INFO "%s: DT2W Hover command to Samsung Factory\n", __func__);
+	/* find command */
+	list_for_each_entry(factory_cmd_ptr,
+			&sfd->factory_cmd_list_head, list) {
+		if (!strcmp(strbuff, factory_cmd_ptr->cmd_name)) {
+			cmd_found = true;
+			break;
+		}
+	}
+	if (cmd_found)
+	{
+		sfd->factory_cmd_param[0] = value;
+		factory_cmd_ptr->cmd_func(sfd);
+		printk(KERN_INFO "%s: DT2W Hover command to Samsung Factory Result: %s\n", __func__, sfd->factory_cmd_result);
+	}
+}
+
 enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
 {
 	printk(KERN_INFO "%s: DT2W Timer finished, touch count reset\n", __func__);
@@ -1206,7 +1233,7 @@ void cyttsp5_dt2w_timerCancel(void)
 
 void cyttsp5_dt2w_timerInit(void)
 {
-	unsigned long delay_in_ms = 500L;
+	unsigned long delay_in_ms = 1000L;
 	printk(KERN_INFO "%s: Setting up DT2W timer\n", __func__);
 	hrtimer_init( &dt2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
   	dt2w_ktime = ktime_set( 0, MS_TO_NS(delay_in_ms) );

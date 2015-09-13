@@ -67,12 +67,6 @@ enum {
 };
 #define FACTORY_CMD(name, func) .cmd_name = name, .cmd_func = func
 
-struct factory_cmd {
-	struct list_head list;
-	const char *cmd_name;
-	void (*cmd_func)(void *device_data);
-};
-
 /************************************************************************
  * function def
  ************************************************************************/
