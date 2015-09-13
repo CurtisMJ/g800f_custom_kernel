@@ -5627,7 +5627,7 @@ void cyttsp5_setvibdev(struct dc_motor_drvdata *vib_device)
 	printk(KERN_INFO "%s: DT2W Specific vibrator device received\n", __func__);
 }
 
-void cyttsp5_presspwr(void)
+void _cyttsp5_presspwr(struct work_struct *cyttsp5_dt2w_power_work)
 {
 	if (pwr_dev)
 	{
@@ -5642,6 +5642,12 @@ void cyttsp5_presspwr(void)
 		mutex_unlock(&pwrkeyworklock);
 		printk(KERN_INFO "%s: Turn it on\n", __func__);
 	}
+}
+static DECLARE_WORK(cyttsp5_dt2w_power_work, _cyttsp5_presspwr);
+
+void cyttsp5_presspwr(void)
+{
+	schedule_work(&cyttsp5_dt2w_power_work);
 }
 
 void cyttsp5_vibrate(int value)
