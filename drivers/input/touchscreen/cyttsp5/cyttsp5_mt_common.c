@@ -991,6 +991,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		dt2w_active = 1;
 		dt2w_keyflag = 0;
 		dt2w_touchCount = 0;
+		cyttsp5_mt_glove_enable(dev, true);
 		return;
 	}
 #endif
