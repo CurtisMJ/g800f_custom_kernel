@@ -22,12 +22,17 @@
  * Contact Cypress Semiconductor at www.cypress.com <ttdrivers@cypress.com>
  *
  */
+ 
+#define CYTTSP5_DT2W
 
 #include <linux/slab.h>
 #include <linux/err.h>
 
 #include "cyttsp5_regs.h"
 
+#ifdef CYTTSP5_DT2W
+#include "cyttsp5_mt_common.h"
+#endif
 
 /************************************************************************
  * Macros, Structures
@@ -1170,6 +1175,9 @@ release_exclusive:
 			__func__);
 check_rc:
 	_check_rc(sfd, rc);
+#ifdef CYTTSP5_DT2W
+	cyttsp5_dt2w_viewcoverNotify(sfd->view_cover_closed);
+#endif
 }
 
 static void hover_enable(void *device_data)

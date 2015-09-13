@@ -5587,7 +5587,7 @@ static ssize_t cyttsp5_dt2w_status_show(struct device *dev,
 {
 	ssize_t ret;
 
-	ret = snprintf(buf, CY_MAX_PRBUF_SIZE, "0x%02X\n",
+	ret = snprintf(buf, CY_MAX_PRBUF_SIZE, "%d\n",
 			dt2w_status);
 	return ret;
 }
@@ -6093,6 +6093,7 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 			tsp_debug_err(true, cd->dev, "%s: calibration fail, rc=%d\n",
 			__func__, rc);
 	}
+	
 	return 0;
 
 error_startup_debug:

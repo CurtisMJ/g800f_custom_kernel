@@ -37,6 +37,10 @@ unsigned int dt2w_active = 0;
 unsigned int dt2w_keyflag = 0;
 unsigned int dt2w_touchCount = 0;
 unsigned int dt2w_timerFlag = 0;
+unsigned int dt2w_x = 0;
+unsigned int dt2w_y = 0;
+unsigned int dt2w_cover = 0;
+struct input_dev *dt2w_devinput;
 static struct hrtimer dt2w_timer;
 static ktime_t dt2w_ktime;
 void cyttsp5_dt2w_timerStart(void);
@@ -606,28 +610,6 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 		cyttsp5_get_touch(md, tch, si->xy_data +
 			(i * si->desc.tch_record_size));
 
-#ifdef CYTTSP5_DT2W
-		if ((cyttsp5_dt2w_check() > 0) && !(dt2w_keyflag > 0) && (dt2w_active))
-		{
-			//tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touch event detected! Ignoring rest of procedure...\n", __func__);
-			if ((tch->abs[CY_TCH_O] != CY_OBJ_HOVER) &&
-				(tch->abs[CY_TCH_E] == CY_EV_TOUCHDOWN))
-			{
-				dt2w_touchCount++;
-				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touchdown detected! # %d\n", __func__, dt2w_touchCount);
-				if (dt2w_touchCount > 1) {
-					cyttsp5_dt2w_timerCancel();
-					cyttsp5_vibrate(60);
-					tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
-					dt2w_keyflag = 1;
-					cyttsp5_presspwr();
-				} else {
-					cyttsp5_dt2w_timerStart();
-				}
-			}
-			return;
-		}
-#endif
 		/*  Discard proximity event */
 		if (tch->abs[CY_TCH_O] == CY_OBJ_PROXIMITY) {
 			dev_vdbg(dev, "%s: Discarding proximity event\n",
@@ -731,6 +713,38 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 
 		cyttsp5_input_sync(md->input);
 		mt_sync_count++;
+		
+#ifdef CYTTSP5_DT2W
+		if ((cyttsp5_dt2w_check() > 0) && !(dt2w_keyflag > 0) && (dt2w_active))
+		{
+#if TOUCH_BOOSTER
+			touch_num = 0;
+			booster_status = false;
+#endif
+			if ((tch->abs[CY_TCH_O] != CY_OBJ_HOVER) &&
+				(tch->abs[CY_TCH_E] == CY_EV_TOUCHDOWN))
+			{
+				dt2w_touchCount++;
+				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touchdown detected! # %d\n", __func__, dt2w_touchCount);
+				if (dt2w_touchCount > 1) {
+					cyttsp5_dt2w_timerCancel();
+					if ((abs(dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(dt2w_y - tch->abs[CY_TCH_Y]) < 50))
+					{
+						cyttsp5_vibrate(60);
+						tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
+						dt2w_keyflag = 1;
+						cyttsp5_presspwr();
+					} else {
+						dt2w_touchCount = 0;
+					}
+				} else {
+					cyttsp5_dt2w_timerStart();
+				}
+				dt2w_x = tch->abs[CY_TCH_X];
+				dt2w_y = tch->abs[CY_TCH_Y];
+			}
+		}
+#endif
 
 cyttsp5_get_mt_touches_pr_tch:
 		print_log(dev, tch, t);
@@ -934,9 +948,10 @@ static int cyttsp5_mt_open(struct input_dev *input)
 {
 	struct device *dev = input->dev.parent;
 #ifdef CYTTSP5_DT2W
-	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0))
+	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0) && !dt2w_cover)
 	{
 		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W\n", __func__);
+		cyttsp5_dt2w_timerCancel();
 		dt2w_active = 0;
 		return 0;
 	}
@@ -971,7 +986,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	struct cyttsp5_mt_data *md = &cd->md;
 	
 #ifdef CYTTSP5_DT2W
-	if (cyttsp5_dt2w_check() > 0)
+	if ((cyttsp5_dt2w_check() > 0) && !dt2w_cover)
 	{
 		tsp_debug_dbg(true, dev, "%s:Prohibit touchscreen shutdown for DT2W\n", __func__);
 		dt2w_active = 1;
@@ -1198,6 +1213,18 @@ void cyttsp5_dt2w_timerInit(void)
   	dt2w_timer.function = &cyttsp5_dt2w_hrtimer_callback;
   	dt2w_timerFlag = 1;
 }
+
+void cyttsp5_dt2w_viewcoverNotify(int value)
+{
+	printk(KERN_INFO "%s: DT2W: Notified of view cover status: %d \n", __func__, value);
+	dt2w_cover = value;
+	if (value && dt2w_active)
+	{
+		dt2w_active = 0;
+		printk(KERN_INFO "%s: DT2W: View cover closed while panel active, suspending driver now.\n", __func__);
+		cyttsp5_mt_close(dt2w_devinput);
+	}
+}
 #endif
 
 int cyttsp5_mt_probe(struct device *dev)
@@ -1273,6 +1300,7 @@ int cyttsp5_mt_probe(struct device *dev)
 	tsp_debug_dbg(false, dev, "%s:done\n", __func__);
 #ifdef CYTTSP5_DT2W
 	cyttsp5_dt2w_timerInit();
+	dt2w_devinput = md->input;
 #endif
 	return 0;
 
