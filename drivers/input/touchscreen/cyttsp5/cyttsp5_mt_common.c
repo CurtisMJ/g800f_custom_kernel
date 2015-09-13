@@ -735,7 +735,8 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 						dt2w_keyflag = 1;
 						cyttsp5_presspwr();
 					} else {
-						dt2w_touchCount = 0;
+						dt2w_touchCount = 1;
+						cyttsp5_dt2w_timerStart();
 					}
 				} else {
 					cyttsp5_dt2w_timerStart();
@@ -1233,7 +1234,7 @@ void cyttsp5_dt2w_timerCancel(void)
 
 void cyttsp5_dt2w_timerInit(void)
 {
-	unsigned long delay_in_ms = 1000L;
+	unsigned long delay_in_ms = 400L;
 	printk(KERN_INFO "%s: Setting up DT2W timer\n", __func__);
 	hrtimer_init( &dt2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
   	dt2w_ktime = ktime_set( 0, MS_TO_NS(delay_in_ms) );
