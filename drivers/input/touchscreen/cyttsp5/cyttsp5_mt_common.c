@@ -1003,6 +1003,8 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		cyttsp5_factory_command(dev, "hover_enable", 0);
 		return;
 	}
+	if (dt2w_cover)
+		cyttsp5_dt2w_coverSimReset(dev);
 
 #endif
 
