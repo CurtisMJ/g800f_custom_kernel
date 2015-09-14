@@ -40,6 +40,7 @@ unsigned int dt2w_timerFlag = 0;
 unsigned int dt2w_x = 0;
 unsigned int dt2w_y = 0;
 unsigned int dt2w_cover = 0;
+unsigned int dt2w_coverSim = 0;
 static struct hrtimer dt2w_timer;
 static ktime_t dt2w_ktime;
 void cyttsp5_dt2w_timerStart(void);
@@ -1218,6 +1219,7 @@ void cyttsp5_dt2w_coverSimReset(struct device *_dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(_dev);
 	bool origState = false;
+	dt2w_coverSim = 1;
 	if (cd != NULL)
 	{
 		origState = cd->sfd.view_cover_closed;
@@ -1226,7 +1228,7 @@ void cyttsp5_dt2w_coverSimReset(struct device *_dev)
 		if (origState)
 			cyttsp5_factory_command(_dev, "clear_cover_mode", 3);
 	}
-	
+	dt2w_coverSim = 0;
 }
 
 enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
@@ -1275,15 +1277,18 @@ void cyttsp5_dt2w_viewcoverNotify(struct device *_dev ,int value)
 	{
 		dt2w_active = 0;
 		printk(KERN_INFO "%s: DT2W: View cover closed while panel active, attempt to suspend driver now.\n", __func__);
-		cd = dev_get_drvdata(_dev);
-		if (cd != NULL)
+		if (!dt2w_coverSim)
 		{
-			md = &cd->md;
-			if (md != NULL)
+			cd = dev_get_drvdata(_dev);
+			if (cd != NULL)
 			{
-				cyttsp5_mt_close(md->input);
+				md = &cd->md;
+				if (md != NULL)
+				{
+					cyttsp5_mt_close(md->input);
+				}
 			}
-		}
+		} else printk(KERN_INFO "%s: DT2W: Drive suspend aborted, cover sim active.\n", __func__);
 	}
 }
 #endif
