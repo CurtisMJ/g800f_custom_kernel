@@ -951,6 +951,7 @@ static int cyttsp5_mt_open(struct input_dev *input)
 {
 	struct device *dev = input->dev.parent;
 #ifdef CYTTSP5_DT2W
+	tsp_debug_dbg(true, dev, "%s:Open input device DT2W: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
 	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0) && !dt2w_cover)
 	{
 		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W\n", __func__);
@@ -994,17 +995,19 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	struct cyttsp5_mt_data *md = &cd->md;
 	
 #ifdef CYTTSP5_DT2W
+	tsp_debug_dbg(true, dev, "%s:Close input device DT2W: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
 	if ((cyttsp5_dt2w_check() > 0) && !dt2w_cover)
 	{
 		tsp_debug_dbg(true, dev, "%s:Prohibit touchscreen shutdown for DT2W\n", __func__);
+		cyttsp5_dt2w_coverSimReset(dev);
+		cyttsp5_factory_command(dev, "hover_enable", 0);
 		dt2w_active = 1;
 		dt2w_keyflag = 0;
 		dt2w_touchCount = 0;
-		cyttsp5_factory_command(dev, "hover_enable", 0);
+		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
 		return;
 	}
-	if (dt2w_cover)
-		cyttsp5_dt2w_coverSimReset(dev);
+
 
 #endif
 
