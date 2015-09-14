@@ -40,12 +40,10 @@ unsigned int dt2w_timerFlag = 0;
 unsigned int dt2w_x = 0;
 unsigned int dt2w_y = 0;
 unsigned int dt2w_cover = 0;
-unsigned int dt2w_coverSim = 0;
 static struct hrtimer dt2w_timer;
 static ktime_t dt2w_ktime;
 void cyttsp5_dt2w_timerStart(void);
 void cyttsp5_dt2w_timerCancel(void);
-void cyttsp5_dt2w_coverSimReset(struct device *_dev);
 #endif
 
 
@@ -980,9 +978,6 @@ static int cyttsp5_mt_open(struct input_dev *input)
 		cyttsp5_mt_wake_attention, 0);
 
 	cyttsp5_core_resume(dev);
-#ifdef CYTTSP5_DT2W
-	cyttsp5_dt2w_coverSimReset(dev);
-#endif
 	return 0;
 }
 #ifdef CYTTSP5_DT2W
@@ -999,7 +994,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	if ((cyttsp5_dt2w_check() > 0) && !dt2w_cover)
 	{
 		tsp_debug_dbg(true, dev, "%s:Prohibit touchscreen shutdown for DT2W\n", __func__);
-		cyttsp5_dt2w_coverSimReset(dev);
+		cyttsp5_factory_command(dev, "clear_cover_mode", 0);
 		cyttsp5_factory_command(dev, "hover_enable", 0);
 		dt2w_active = 1;
 		dt2w_keyflag = 0;
@@ -1220,22 +1215,6 @@ void cyttsp5_factory_command(struct device *_dev, const char *command, int value
 	}
 }
 
-void cyttsp5_dt2w_coverSimReset(struct device *_dev)
-{
-	struct cyttsp5_core_data *cd = dev_get_drvdata(_dev);
-	bool origState = false;
-	dt2w_coverSim = 1;
-	if (cd != NULL)
-	{
-		origState = cd->sfd.view_cover_closed;
-		cyttsp5_factory_command(_dev, "clear_cover_mode", 3);
-		cyttsp5_factory_command(_dev, "clear_cover_mode", 0);
-		if (origState)
-			cyttsp5_factory_command(_dev, "clear_cover_mode", 3);
-	}
-	dt2w_coverSim = 0;
-}
-
 enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
 {
 	printk(KERN_INFO "%s: DT2W Timer finished, touch count reset\n", __func__);
@@ -1282,18 +1261,15 @@ void cyttsp5_dt2w_viewcoverNotify(struct device *_dev ,int value)
 	{
 		dt2w_active = 0;
 		printk(KERN_INFO "%s: DT2W: View cover closed while panel active, attempt to suspend driver now.\n", __func__);
-		if (!dt2w_coverSim)
+		cd = dev_get_drvdata(_dev);
+		if (cd != NULL)
 		{
-			cd = dev_get_drvdata(_dev);
-			if (cd != NULL)
+			md = &cd->md;
+			if (md != NULL)
 			{
-				md = &cd->md;
-				if (md != NULL)
-				{
-					cyttsp5_mt_close(md->input);
-				}
+				cyttsp5_mt_close(md->input);
 			}
-		} else printk(KERN_INFO "%s: DT2W: Drive suspend aborted, cover sim active.\n", __func__);
+		}
 	}
 }
 #endif
