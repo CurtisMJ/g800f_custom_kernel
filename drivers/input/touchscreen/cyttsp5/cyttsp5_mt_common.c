@@ -44,6 +44,7 @@ static struct hrtimer dt2w_timer;
 static ktime_t dt2w_ktime;
 void cyttsp5_dt2w_timerStart(void);
 void cyttsp5_dt2w_timerCancel(void);
+void cyttsp5_dt2w_coverSimReset(struct device *_dev);
 #endif
 
 
@@ -977,6 +978,9 @@ static int cyttsp5_mt_open(struct input_dev *input)
 		cyttsp5_mt_wake_attention, 0);
 
 	cyttsp5_core_resume(dev);
+#ifdef CYTTSP5_DT2W
+	cyttsp5_dt2w_coverSimReset(dev);
+#endif
 	return 0;
 }
 #ifdef CYTTSP5_DT2W
@@ -998,6 +1002,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		cyttsp5_factory_command(dev, "hover_enable", 0);
 		return;
 	}
+
 #endif
 
 	tsp_debug_dbg(true, dev, "%s:\n", __func__);
@@ -1205,8 +1210,23 @@ void cyttsp5_factory_command(struct device *_dev, const char *command, int value
 	{
 		sfd->factory_cmd_param[0] = value;
 		factory_cmd_ptr->cmd_func(sfd);
-		printk(KERN_INFO "%s: DT2W Hover command to Samsung Factory Result: %s\n", __func__, sfd->factory_cmd_result);
+		printk(KERN_INFO "%s: DT2W Factory command to Samsung Factory Result: %s\n", __func__, sfd->factory_cmd_result);
 	}
+}
+
+void cyttsp5_dt2w_coverSimReset(struct device *_dev)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(_dev);
+	bool origState = false;
+	if (cd != NULL)
+	{
+		origState = cd->sfd.view_cover_closed;
+		cyttsp5_factory_command(_dev, "clear_cover_mode", 3);
+		cyttsp5_factory_command(_dev, "clear_cover_mode", 0);
+		if (origState)
+			cyttsp5_factory_command(_dev, "clear_cover_mode", 3);
+	}
+	
 }
 
 enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
