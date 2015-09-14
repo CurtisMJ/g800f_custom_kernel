@@ -980,7 +980,7 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	return 0;
 }
 #ifdef CYTTSP5_DT2W
-void cyttsp5_hover_command(struct device *_dev, int value);
+void cyttsp5_factory_command(struct device *_dev, const char *command, int value);
 #endif
 static void cyttsp5_mt_close(struct input_dev *input)
 {
@@ -995,7 +995,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		dt2w_active = 1;
 		dt2w_keyflag = 0;
 		dt2w_touchCount = 0;
-		cyttsp5_hover_command(dev, 0);
+		cyttsp5_factory_command(dev, "hover_enable", 0);
 		return;
 	}
 #endif
@@ -1183,14 +1183,16 @@ static int cyttsp5_setup_input_attention(struct device *dev)
 }
 
 #ifdef CYTTSP5_DT2W
-void cyttsp5_hover_command(struct device *_dev, int value)
+void cyttsp5_factory_command(struct device *_dev, const char *command, int value)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(_dev);
 	struct cyttsp5_samsung_factory_data *sfd = &cd->sfd;
 	struct factory_cmd *factory_cmd_ptr = NULL;
-	char strbuff[FACTORY_CMD_STR_LEN] = "hover_enable";
+	//char strbuff[FACTORY_CMD_STR_LEN] = "hover_enable";
+	char strbuff[FACTORY_CMD_STR_LEN] = {0};
 	bool cmd_found = false;
-	printk(KERN_INFO "%s: DT2W Hover command to Samsung Factory\n", __func__);
+	printk(KERN_INFO "%s: DT2W Factory command to Samsung Factory: %s\n", __func__, command);
+	strcpy(strbuff, command); // used internally, can be assumed command will fit
 	/* find command */
 	list_for_each_entry(factory_cmd_ptr,
 			&sfd->factory_cmd_list_head, list) {

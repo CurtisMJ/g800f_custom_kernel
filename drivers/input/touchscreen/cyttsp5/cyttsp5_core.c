@@ -4943,6 +4943,7 @@ reset:
 		} else
 			mutex_unlock(&cd->system_lock);
 		cd->hw_power_state = true;
+		cd->hid_reset_cmd_state = 0;
 	}
 	t = wait_event_timeout(cd->wait_q, (cd->hid_reset_cmd_state == 0),
 			msecs_to_jiffies(CY_HID_RESET_TIMEOUT));
