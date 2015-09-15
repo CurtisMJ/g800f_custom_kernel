@@ -42,8 +42,15 @@ unsigned int dt2w_y = 0;
 unsigned int dt2w_cover = 0;
 static struct hrtimer dt2w_timer;
 static ktime_t dt2w_ktime;
+static struct hrtimer dt2w_extraWatch;
+static ktime_t dt2w_extraWatch_ktime;
+static ktime_t dt2w_extraWatch_ktime_reset;
+struct cyttsp5_core_data *dt2w_cd;
 void cyttsp5_dt2w_timerStart(void);
 void cyttsp5_dt2w_timerCancel(void);
+void cyttsp5_dt2w_extraWatchStart(void);
+void cyttsp5_dt2w_extraWatchCancel(void);
+static DEFINE_MUTEX(resetworklock);
 #endif
 
 
@@ -733,6 +740,7 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 						cyttsp5_vibrate(60);
 						tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
 						dt2w_keyflag = 1;
+						cyttsp5_dt2w_extraWatchCancel();
 						cyttsp5_presspwr();
 					} else {
 						dt2w_touchCount = 1;
@@ -950,10 +958,12 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	struct device *dev = input->dev.parent;
 #ifdef CYTTSP5_DT2W
 	tsp_debug_dbg(true, dev, "%s:Open input device DT2W: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
-	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0) && !dt2w_cover)
+	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0) && !dt2w_cover && dt2w_active)
 	{
 		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W\n", __func__);
 		cyttsp5_dt2w_timerCancel();
+		cyttsp5_dt2w_extraWatchCancel();
+		//cyttsp5_mt_close(input);
 		dt2w_active = 0;
 		return 0;
 	}
@@ -989,24 +999,24 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	struct cyttsp5_mt_data *md = &cd->md;
 	
+	tsp_debug_dbg(true, dev, "%s:\n", __func__);
 #ifdef CYTTSP5_DT2W
 	tsp_debug_dbg(true, dev, "%s:Close input device DT2W: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
-	if ((cyttsp5_dt2w_check() > 0) && !dt2w_cover)
+	if ((cyttsp5_dt2w_check() > 0) && !dt2w_cover && !dt2w_active)
 	{
+		//cyttsp5_mt_open(input);
+		dt2w_active = 1;
 		tsp_debug_dbg(true, dev, "%s:Prohibit touchscreen shutdown for DT2W\n", __func__);
 		cyttsp5_factory_command(dev, "clear_cover_mode", 0);
-		cyttsp5_factory_command(dev, "hover_enable", 0);
-		dt2w_active = 1;
 		dt2w_keyflag = 0;
 		dt2w_touchCount = 0;
+		cyttsp5_dt2w_extraWatchStart();
 		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
 		return;
 	}
 
 
 #endif
-
-	tsp_debug_dbg(true, dev, "%s:\n", __func__);
 
 #if TOUCH_BOOSTER
 	if (md->touch_pressed_num != 0) {
@@ -1033,6 +1043,8 @@ static void cyttsp5_mt_close(struct input_dev *input)
 
 	/* pm_runtime_put(dev); */
 	cyttsp5_core_suspend(dev);
+
+
 	
 }
 
@@ -1222,6 +1234,43 @@ enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
   	return HRTIMER_NORESTART;
 }
 
+void cyttsp5_dt2w_extraWatch_reset(struct work_struct *cyttsp5_dt2w_extraWatch_work)
+{
+	if (!mutex_trylock(&resetworklock))
+					goto earlyExit;
+	printk(KERN_INFO "%s: DT2W Extra WatchDog: Driver reset work started\n", __func__);
+	dt2w_cd->sfd.corecmd->request_reset(dt2w_cd->dev);
+	dt2w_active = 1;
+	cyttsp5_mt_close(dt2w_cd->md.input);
+	dt2w_active = 0;
+	cyttsp5_mt_open(dt2w_cd->md.input);
+	dt2w_active = 1;
+	mutex_unlock(&resetworklock);
+	printk(KERN_INFO "%s: DT2W Extra WatchDog: Driver reset work complete\n", __func__);
+	earlyExit:;
+	hrtimer_start( &dt2w_extraWatch, dt2w_extraWatch_ktime_reset, HRTIMER_MODE_REL );	
+}
+static DECLARE_WORK(cyttsp5_dt2w_extraWatch_reset_work, cyttsp5_dt2w_extraWatch_reset);
+
+enum hrtimer_restart cyttsp5_dt2w_extraWatch_hrtimer_callback( struct hrtimer *timer )
+{
+	int rc = -1;
+	int size;
+	//struct cyttsp5_mt_data *md = &dt2w_cd->md;
+	size = get_unaligned_le16(&dt2w_cd->input_buf[0]);
+	rc = (!dt2w_cd->hid_reset_cmd_state || 
+		    !dt2w_cd->hid_cmd_state);
+	printk(KERN_INFO "%s: DT2W Extra WatchDog: %d %d %d %d\n", __func__, dt2w_cd->hid_reset_cmd_state, dt2w_cd->hid_cmd_state, rc, size);
+	if ((size == 0) && (rc == 1))
+	{
+		printk(KERN_INFO "%s: DT2W Extra WatchDog: Driver reset required, performing...\n", __func__);
+		schedule_work(&cyttsp5_dt2w_extraWatch_reset_work);
+		return HRTIMER_NORESTART;
+	}
+	hrtimer_forward_now(&dt2w_extraWatch, dt2w_extraWatch_ktime);
+  	return HRTIMER_RESTART;
+}
+
 void cyttsp5_dt2w_timerStart(void)
 {
 	if (dt2w_timerFlag)
@@ -1240,13 +1289,42 @@ void cyttsp5_dt2w_timerCancel(void)
 	}
 }
 
-void cyttsp5_dt2w_timerInit(void)
+void cyttsp5_dt2w_extraWatchStart(void)
+{
+	if (dt2w_timerFlag)
+	{
+		printk(KERN_INFO "%s: DT2W Watchdog Timer started.\n", __func__);
+		hrtimer_start( &dt2w_extraWatch, dt2w_extraWatch_ktime, HRTIMER_MODE_REL );	
+	}
+}
+
+void cyttsp5_dt2w_extraWatchCancel(void)
+{
+	if (dt2w_timerFlag)
+	{
+		printk(KERN_INFO "%s: DT2W Watchdog Timer canceled.\n", __func__);
+		hrtimer_cancel(&dt2w_extraWatch);	
+	}
+}
+
+void cyttsp5_dt2w_timerInit(struct cyttsp5_core_data *cd)
 {
 	unsigned long delay_in_ms = 400L;
-	printk(KERN_INFO "%s: Setting up DT2W timer\n", __func__);
+	unsigned long watch_delay_in_ms = 1000L;
+	unsigned long watch_reset_delay_in_ms = 10000L;
+	//struct cyttsp5_dt2w_watchInfo *watchInfo = {0};
+	printk(KERN_INFO "%s: Setting up DT2W timers\n", __func__);
 	hrtimer_init( &dt2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
   	dt2w_ktime = ktime_set( 0, MS_TO_NS(delay_in_ms) );
   	dt2w_timer.function = &cyttsp5_dt2w_hrtimer_callback;
+  	
+  	hrtimer_init( &dt2w_extraWatch, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+  	dt2w_extraWatch_ktime = ktime_set( 0, MS_TO_NS(watch_delay_in_ms) );
+  	dt2w_extraWatch_ktime_reset = ktime_set( 0, MS_TO_NS(watch_reset_delay_in_ms) );
+  	dt2w_extraWatch.function = &cyttsp5_dt2w_extraWatch_hrtimer_callback;
+  	//watchInfo->_hrtimer = dt2w_extraWatch;
+  	//watchInfo->cd = cd;
+  	dt2w_cd = cd;
   	dt2w_timerFlag = 1;
 }
 
@@ -1346,7 +1424,7 @@ int cyttsp5_mt_probe(struct device *dev)
 
 	tsp_debug_dbg(false, dev, "%s:done\n", __func__);
 #ifdef CYTTSP5_DT2W
-	cyttsp5_dt2w_timerInit();
+	cyttsp5_dt2w_timerInit(cd);
 #endif
 	return 0;
 
