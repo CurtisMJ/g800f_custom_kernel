@@ -37,9 +37,9 @@ static const char *cy_driver_core_version = CY_DRIVER_VERSION;
 static const char *cy_driver_core_date = CY_DRIVER_DATE;
 
 #ifdef CYTTSP5_DT2W
-unsigned int dt2w_status = 1; 
-struct input_dev *pwr_dev;
-struct dc_motor_drvdata *vib_dev;
+static unsigned int dt2w_status = 1; 
+static struct input_dev *pwr_dev;
+static struct dc_motor_drvdata *vib_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
 
 #endif
@@ -4943,7 +4943,6 @@ reset:
 		} else
 			mutex_unlock(&cd->system_lock);
 		cd->hw_power_state = true;
-		cd->hid_reset_cmd_state = 0;
 	}
 	t = wait_event_timeout(cd->wait_q, (cd->hid_reset_cmd_state == 0),
 			msecs_to_jiffies(CY_HID_RESET_TIMEOUT));
@@ -5628,7 +5627,7 @@ void cyttsp5_setvibdev(struct dc_motor_drvdata *vib_device)
 	printk(KERN_INFO "%s: DT2W Specific vibrator device received\n", __func__);
 }
 
-void _cyttsp5_presspwr(struct work_struct *cyttsp5_dt2w_power_work)
+static void _cyttsp5_presspwr(struct work_struct *cyttsp5_dt2w_power_work)
 {
 	if (pwr_dev)
 	{

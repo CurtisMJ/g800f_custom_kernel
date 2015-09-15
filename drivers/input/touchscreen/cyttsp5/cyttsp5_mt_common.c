@@ -37,17 +37,17 @@
 #define FORCE_SATISFY_PALMPAUSE_FOR_LARGEOBJ
 #ifdef CYTTSP5_DT2W
 #define MS_TO_NS(x)	(x * 1E6L)
-unsigned int dt2w_active = 0;
-unsigned int dt2w_keyflag = 0;
-unsigned int dt2w_touchCount = 0;
-unsigned int dt2w_timerFlag = 0;
-unsigned int dt2w_x = 0;
-unsigned int dt2w_y = 0;
-unsigned int dt2w_cover = 0;
+static unsigned int dt2w_active = 0;
+static unsigned int dt2w_keyflag = 0;
+static unsigned int dt2w_touchCount = 0;
+static unsigned int dt2w_timerFlag = 0;
+static unsigned int dt2w_x = 0;
+static unsigned int dt2w_y = 0;
+static unsigned int dt2w_cover = 0;
 static struct hrtimer dt2w_timer;
 static ktime_t dt2w_ktime;
-void cyttsp5_dt2w_timerStart(void);
-void cyttsp5_dt2w_timerCancel(void);
+static void cyttsp5_dt2w_timerStart(void);
+static void cyttsp5_dt2w_timerCancel(void);
 static struct wake_lock dt2w_wake_lock;
 #endif
 
@@ -987,7 +987,7 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	return 0;
 }
 #ifdef CYTTSP5_DT2W
-void cyttsp5_factory_command(struct device *_dev, const char *command, int value);
+static void cyttsp5_factory_command(struct device *_dev, const char *command, int value);
 #endif
 static void cyttsp5_mt_close(struct input_dev *input)
 {
@@ -1196,7 +1196,7 @@ static int cyttsp5_setup_input_attention(struct device *dev)
 }
 
 #ifdef CYTTSP5_DT2W
-void cyttsp5_factory_command(struct device *_dev, const char *command, int value)
+static void cyttsp5_factory_command(struct device *_dev, const char *command, int value)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(_dev);
 	struct cyttsp5_samsung_factory_data *sfd = &cd->sfd;
@@ -1222,14 +1222,14 @@ void cyttsp5_factory_command(struct device *_dev, const char *command, int value
 	}
 }
 
-enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
+static enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
 {
 	printk(KERN_INFO "%s: DT2W Timer finished, touch count reset\n", __func__);
 	dt2w_touchCount = 0;
   	return HRTIMER_NORESTART;
 }
 
-void cyttsp5_dt2w_timerStart(void)
+static void cyttsp5_dt2w_timerStart(void)
 {
 	if (dt2w_timerFlag)
 	{
@@ -1238,7 +1238,7 @@ void cyttsp5_dt2w_timerStart(void)
 	}
 }
 
-void cyttsp5_dt2w_timerCancel(void)
+static void cyttsp5_dt2w_timerCancel(void)
 {
 	if (dt2w_timerFlag)
 	{
@@ -1247,7 +1247,7 @@ void cyttsp5_dt2w_timerCancel(void)
 	}
 }
 
-void cyttsp5_dt2w_timerInit(void)
+static void cyttsp5_dt2w_timerInit(void)
 {
 	unsigned long delay_in_ms = 400L;
 	printk(KERN_INFO "%s: Setting up DT2W timer\n", __func__);
