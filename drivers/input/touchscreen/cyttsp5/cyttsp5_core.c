@@ -4165,7 +4165,7 @@ static int parse_command_input(struct cyttsp5_core_data *cd, int size)
 	return 0;
 }
 
-int cyttsp5_parse_input(struct cyttsp5_core_data *cd)
+static int cyttsp5_parse_input(struct cyttsp5_core_data *cd)
 {
 	int report_id;
 	int is_command = 0;
@@ -5879,7 +5879,7 @@ static void cyttsp5_del_core(struct device *dev)
 	return;
 }
 
-void cyttsp5_ta_cb(struct tsp_callbacks *cb, bool ta_status)
+static void cyttsp5_ta_cb(struct tsp_callbacks *cb, bool ta_status)
 {
 	struct cyttsp5_core_data *cd =
 			container_of(cb, struct cyttsp5_core_data, callbacks);
