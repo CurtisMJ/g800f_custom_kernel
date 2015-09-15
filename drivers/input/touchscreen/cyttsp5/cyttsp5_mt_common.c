@@ -1274,6 +1274,8 @@ void cyttsp5_dt2w_viewcoverNotify(struct device *_dev ,int value)
 			md = &cd->md;
 			if (md != NULL)
 			{
+				printk(KERN_INFO "%s: DT2W: Release wakelock", __func__);
+				wake_unlock(&dt2w_wake_lock);
 				cyttsp5_mt_close(md->input);
 			}
 		}
