@@ -20,14 +20,18 @@
  * Contact Cypress Semiconductor at www.cypress.com <ttdrivers@cypress.com>
  *
  */
+#define CYTTSP5_DT2W
 
 #include "cyttsp5_regs.h"
 #include "cyttsp5_core.h"
 #include <linux/input/mt.h>
+#ifdef CYTTSP5_DT2W
+#include <linux/wakelock.h>
+#endif
 
 #define CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_MT_B
 #define CYTTSP5_TOUCHLOG_ENABLE 0
-#define CYTTSP5_DT2W
+
 
 /*#define REPORT_XY_WHEN_LIFTOFF*/
 #define FORCE_SATISFY_PALMPAUSE_FOR_LARGEOBJ
@@ -44,6 +48,7 @@ static struct hrtimer dt2w_timer;
 static ktime_t dt2w_ktime;
 void cyttsp5_dt2w_timerStart(void);
 void cyttsp5_dt2w_timerCancel(void);
+static struct wake_lock dt2w_wake_lock;
 #endif
 
 
@@ -952,8 +957,9 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	tsp_debug_dbg(true, dev, "%s:Open input device DT2W: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
 	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0) && !dt2w_cover)
 	{
-		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W\n", __func__);
+		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W, release wakelock\n", __func__);
 		cyttsp5_dt2w_timerCancel();
+		wake_unlock(&dt2w_wake_lock);
 		dt2w_active = 0;
 		return 0;
 	}
@@ -999,7 +1005,8 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		dt2w_active = 1;
 		dt2w_keyflag = 0;
 		dt2w_touchCount = 0;
-		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
+		wake_lock(&dt2w_wake_lock);
+		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete, hold wakelock: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
 		return;
 	}
 
@@ -1347,6 +1354,7 @@ int cyttsp5_mt_probe(struct device *dev)
 	tsp_debug_dbg(false, dev, "%s:done\n", __func__);
 #ifdef CYTTSP5_DT2W
 	cyttsp5_dt2w_timerInit();
+	wake_lock_init(&dt2w_wake_lock, WAKE_LOCK_SUSPEND, "dt2w_wake_hold");
 #endif
 	return 0;
 
