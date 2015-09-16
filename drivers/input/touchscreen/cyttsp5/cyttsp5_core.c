@@ -26,6 +26,7 @@
 #include "cyttsp5_regs.h"
 #ifdef CYTTSP5_DT2W
 #include <linux/dc_motor.h>
+#include <linux/sensor/cm36686.h>
 #endif
 
 #define CYTTSP5_USE_SLEEP 0
@@ -39,6 +40,7 @@ static const char *cy_driver_core_date = CY_DRIVER_DATE;
 #ifdef CYTTSP5_DT2W
 struct input_dev *pwr_dev;
 struct dc_motor_drvdata *vib_dev;
+struct cm36686_data *sensor_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
 #endif
 
@@ -5654,6 +5656,29 @@ void cyttsp5_vibrate(int value)
 	}
 }
 
+void cyttsp5_push_light(u16 als, u16 white)
+{
+	printk(KERN_INFO "%s: [SENSOR]Light data received: %d %d\n", __func__, als, white);
+}
+void cyttsp5_push_prox(int v1, int v2, int v3)
+{
+	printk(KERN_INFO "%s: [SENSOR]Proximity data received: %d %d %d\n", __func__, v1, v2, v3);
+}
+
+void cyttsp5_setsensordev(void *sensor)
+{
+	printk(KERN_INFO "%s: DT2W Specific sensor device received\n", __func__);
+	sensor_dev = (struct cm36686_data *)sensor;
+}
+
+void cyttsp5_pumpSensorData(void)
+{
+	if (sensor_dev)
+	{
+		printk(KERN_INFO "%s: [SENSOR]Data pump requested\n", __func__);
+		cm36686_pump_data(sensor_dev);
+	}
+}
 #endif
 
 static struct device_attribute attributes[] = {
