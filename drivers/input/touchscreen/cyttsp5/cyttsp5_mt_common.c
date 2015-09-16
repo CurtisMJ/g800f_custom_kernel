@@ -722,20 +722,32 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 			{
 				md->dt2w_touchCount++;
 				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touchdown detected! # %d\n", __func__, md->dt2w_touchCount);
-				if (md->dt2w_touchCount > 1) {
-					cyttsp5_dt2w_timerCancel(md);
-					if ((abs(md->dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(md->dt2w_y - tch->abs[CY_TCH_Y]) < 50))
-					{
-						cyttsp5_vibrate(60);
-						tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
-						md->dt2w_keyflag = 1;
-						cyttsp5_presspwr();
+				cyttsp5_enableSensors();
+				cyttsp5_syncSensors(md);
+				tsp_debug_dbg(true, dev, "%s:DT2W Sensor data PROX: %d\n", __func__, md->dt2w_sensorProx);
+				tsp_debug_dbg(true, dev, "%s:DT2W Sensor data LIGHT: %d %d\n", __func__, md->dt2w_sensorLightAls, md->dt2w_sensorLightWhite);
+				if (!((md->dt2w_sensorProx > 50) && (md->dt2w_sensorLightAls < 16) && (md->dt2w_sensorLightWhite < 45)))
+				{
+					if (md->dt2w_touchCount > 1) {
+						cyttsp5_dt2w_timerCancel(md);
+						if ((abs(md->dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(md->dt2w_y - tch->abs[CY_TCH_Y]) < 50))
+						{
+							cyttsp5_vibrate(60);
+							tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
+							md->dt2w_keyflag = 1;
+							cyttsp5_presspwr();
+						} else {
+							md->dt2w_touchCount = 1;
+							cyttsp5_dt2w_timerStart(md);
+						}
 					} else {
-						md->dt2w_touchCount = 1;
 						cyttsp5_dt2w_timerStart(md);
 					}
-				} else {
-					cyttsp5_dt2w_timerStart(md);
+				} else 
+				{
+					tsp_debug_dbg(true, dev, "%s:DTW2 Canceled due to sensor conditions!\n", __func__);
+					cyttsp5_dt2w_timerCancel(md);
+					md->dt2w_touchCount = 0;
 				}
 				md->dt2w_x = tch->abs[CY_TCH_X];
 				md->dt2w_y = tch->abs[CY_TCH_Y];
@@ -951,6 +963,7 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	if ((md->dt2w_status) && (md->dt2w_active) && !(md->dt2w_cover))
 	{
 		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W, release wakelock\n", __func__);
+		cyttsp5_stopSensors();
 		cyttsp5_dt2w_timerCancel(md);
 		wake_unlock(&md->dt2w_wake_lock);
 		md->dt2w_active = 0;
@@ -999,6 +1012,8 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		md->dt2w_keyflag = 0;
 		md->dt2w_touchCount = 0;
 		wake_lock(&md->dt2w_wake_lock);
+		cyttsp5_startSensors();
+		cyttsp5_enableSensors();
 		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete, hold wakelock: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
 		return;
 	}

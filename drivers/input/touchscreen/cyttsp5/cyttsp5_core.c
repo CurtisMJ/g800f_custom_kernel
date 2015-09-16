@@ -26,6 +26,7 @@
 #include "cyttsp5_regs.h"
 #ifdef CYTTSP5_DT2W
 #include <linux/dc_motor.h>
+#include <linux/sensor/cm36686.h>
 #endif
 
 #define CYTTSP5_USE_SLEEP 0
@@ -37,9 +38,12 @@ static const char *cy_driver_core_version = CY_DRIVER_VERSION;
 static const char *cy_driver_core_date = CY_DRIVER_DATE;
 
 #ifdef CYTTSP5_DT2W
-struct input_dev *pwr_dev;
-struct dc_motor_drvdata *vib_dev;
+static struct input_dev *pwr_dev;
+static struct dc_motor_drvdata *vib_dev;
+static struct cm36686_data *sensor_data; 
 static DEFINE_MUTEX(pwrkeyworklock);
+static DEFINE_MUTEX(sensorsworklock);
+static DEFINE_MUTEX(sensorsworklockr);
 #endif
 
 struct cyttsp5_hid_field {
@@ -5654,6 +5658,58 @@ void cyttsp5_vibrate(int value)
 	}
 }
 
+void cyttsp5_setsensor(void *sensor)
+{
+	sensor_data = (struct cm36686_data *)sensor;
+	printk(KERN_INFO "%s: DT2W Specific sensor data received\n", __func__);
+}
+
+static void _cyttsp5_enableSensors(struct work_struct *cyttsp5_dt2w_enableSensors_work)
+{
+	if (sensor_data)
+	{
+		if (!mutex_trylock(&sensorsworklock))
+					return;
+		cm36686_enableSensors(sensor_data);
+		mutex_unlock(&sensorsworklock);
+	}
+}
+static DECLARE_WORK(cyttsp5_dt2w_enableSensors_work, _cyttsp5_enableSensors);
+
+static void _cyttsp5_stopSensors(struct work_struct *cyttsp5_dt2w_stopSensors_work)
+{
+	if (sensor_data)
+	{
+		if (!mutex_trylock(&sensorsworklockr))
+					return;
+		cm36686_restorePowerState(sensor_data);
+		mutex_unlock(&sensorsworklockr);
+	}
+}
+static DECLARE_WORK(cyttsp5_dt2w_stopSensors_work, _cyttsp5_stopSensors);
+
+void cyttsp5_enableSensors(void)
+{
+	schedule_work(&cyttsp5_dt2w_enableSensors_work);
+}
+
+void cyttsp5_stopSensors(void)
+{
+	schedule_work(&cyttsp5_dt2w_stopSensors_work);
+}
+
+void cyttsp5_startSensors(void)
+{
+	cm36686_storePowerState(sensor_data);
+}
+
+void cyttsp5_syncSensors(void * mt_data)
+{
+	struct cyttsp5_mt_data *md = (struct cyttsp5_mt_data *)mt_data;
+	md->dt2w_sensorProx = sensor_data->dt2w_ps_data;
+	md->dt2w_sensorLightAls = sensor_data->als_data;
+	md->dt2w_sensorLightWhite = sensor_data->white_data;
+}
 #endif
 
 static struct device_attribute attributes[] = {

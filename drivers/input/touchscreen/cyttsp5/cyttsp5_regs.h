@@ -800,6 +800,9 @@ struct cyttsp5_mt_data {
 	ktime_t dt2w_ktime;
 	struct wake_lock dt2w_wake_lock;
 	bool dt2w_status; 
+	u16 dt2w_sensorProx;
+	u16 dt2w_sensorLightAls;
+	u16 dt2w_sensorLightWhite;
 #endif
 };
 

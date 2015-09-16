@@ -171,5 +171,6 @@ void tsp_charger_inform(bool en);
 #ifdef CYTTSP5_DT2W
 void cyttsp5_setpwrdev(struct input_dev *input_device);
 void cyttsp5_setvibdev(struct dc_motor_drvdata *vib_device);
+void cyttsp5_setsensor(void *sensor);
 #endif
 #endif /* _LINUX_CYTTSP5_CORE_H */

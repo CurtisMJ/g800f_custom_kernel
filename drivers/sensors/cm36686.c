@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA  02110-1301, USA.
  */
+ #define CYTTSP5_DT2W
 
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -33,6 +34,9 @@
 #include <linux/uaccess.h>
 #include <linux/sensor/cm36686.h>
 #include <linux/sensor/sensors_core.h>
+#ifdef CYTTSP5_DT2W
+#include <linux/cyttsp5/cyttsp5_core.h>
+#endif
 
 /* For debugging */
 #undef	cm36686_DEBUG
@@ -84,10 +88,7 @@
  /*lightsnesor log time 6SEC 200mec X 30*/
 #define LIGHT_LOG_TIME		30
 #define LIGHT_ADD_STARTTIME		300000000
-enum {
-	LIGHT_ENABLED = BIT(0),
-	PROXIMITY_ENABLED = BIT(1),
-};
+
 
 /* register settings */
 static u16 als_reg_setting[ALS_REG_NUM][2] = {
@@ -108,6 +109,11 @@ enum {
 	CMD,
 };
 
+enum {
+	LIGHT_ENABLED = BIT(0),
+	PROXIMITY_ENABLED = BIT(1),
+};
+
 static u16 ps_reg_init_setting[PS_REG_NUM][2] = {
 	{REG_PS_CONF1, 0x0300},	/* REG_PS_CONF1 */
 	{REG_PS_CONF3, 0x4200},	/* REG_PS_CONF3 */
@@ -116,36 +122,7 @@ static u16 ps_reg_init_setting[PS_REG_NUM][2] = {
 	{REG_PS_CANC, 0x0000},	/* REG_PS_CANC */
 };
 
-/* driver data */
-struct cm36686_data {
-	struct i2c_client *i2c_client;
-	struct wake_lock prx_wake_lock;
-	struct input_dev *proximity_input_dev;
-	struct input_dev *light_input_dev;
-	struct cm36686_platform_data *pdata;
-	struct mutex power_lock;
-	struct mutex read_lock;
-	struct hrtimer light_timer;
-	struct hrtimer prox_timer;
-	struct workqueue_struct *light_wq;
-	struct workqueue_struct *prox_wq;
-	struct work_struct work_light;
-	struct work_struct work_prox;
-	struct device *proximity_dev;
-	struct device *light_dev;
-	ktime_t light_poll_delay;
-	ktime_t prox_poll_delay;
-	int irq;
-	u8 power_state;
-	int avg[3];
-	u16 als_data;
-	u16 white_data;
-	int count_log_time;
-	unsigned int uProxCalResult;
-
-	void (*cm36686_light_vddpower)(bool);
-	void (*cm36686_proxi_vddpower)(bool);
-};
+// driver data was here
 
 int cm36686_i2c_read_word(struct cm36686_data *cm36686, u8 command,
 			  u16 *val)
@@ -722,7 +699,9 @@ static ssize_t proximity_state_show(struct device *dev,
 			cm36686->cm36686_proxi_vddpower(false);
 	}
 	mutex_unlock(&cm36686->power_lock);
-
+#ifdef CYTTSP5_DT2W
+	cm36686->dt2w_ps_data = ps_data;
+#endif
 	return sprintf(buf, "%u\n", ps_data);
 }
 
@@ -1071,6 +1050,48 @@ static enum hrtimer_restart cm36686_prox_timer_func(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
+#ifdef CYTTSP5_DT2W
+void cm36686_enableSensors(struct cm36686_data* cm36686)
+{
+	char readbuff[8] = {0};
+	printk(KERN_INFO "%s cyttsp5: DT2W sensor enable request\n", __func__);
+	if (!(cm36686->power_state & LIGHT_ENABLED))
+	{
+		printk(KERN_INFO "%s cyttsp5: DT2W sensor enable request LIGHT sent\n", __func__);
+		light_enable_store(cm36686->light_dev, &dev_attr_light_enable, "1", 1);
+	}
+	if (!(cm36686->power_state & PROXIMITY_ENABLED))
+	{
+		printk(KERN_INFO "%s cyttsp5: DT2W sensor enable request PROX sent\n", __func__);
+		proximity_enable_store(cm36686->proximity_dev, &dev_attr_proximity_enable, "1", 1);
+	}
+	printk(KERN_INFO "%s cyttsp5: DT2W refresh PROX data\n", __func__);
+	proximity_state_show(cm36686->proximity_dev, &dev_attr_state, readbuff); 
+}
+
+void cm36686_storePowerState(struct cm36686_data* cm36686)
+{
+	//cm36686->orig_light_state = (cm36686->power_state & LIGHT_ENABLED) ? 1 : 0;
+	cm36686->orig_prox_state = (cm36686->power_state & PROXIMITY_ENABLED) ? 1 : 0;
+	//printk(KERN_INFO "%s cyttsp5: DT2W power state stored: %d %d\n", __func__, cm36686->orig_light_state, cm36686->orig_prox_state);
+	printk(KERN_INFO "%s cyttsp5: DT2W power state stored: 1 %d\n", __func__, cm36686->orig_prox_state);
+}
+
+void cm36686_restorePowerState(struct cm36686_data* cm36686)
+{
+	printk(KERN_INFO "%s cyttsp5: DT2W sensor power restore request\n", __func__);
+	//printk(KERN_INFO "%s cyttsp5: DT2W sensor power restore LIGHT sent: %d\n", __func__, cm36686->orig_light_state);
+	//light_enable_store(cm36686->light_dev, &dev_attr_light_enable, cm36686->orig_light_state ? "1" : "0", 1);
+	/*light sensor always on upon turning screen on
+	 * but cannot be stored as it turns off with screen before touch driver
+	 * is even notified*/
+	printk(KERN_INFO "%s cyttsp5: DT2W sensor power restore LIGHT sent: 1 \n", __func__);
+	light_enable_store(cm36686->light_dev, &dev_attr_light_enable, "1", 1);
+	printk(KERN_INFO "%s cyttsp5: DT2W sensor power restore PROX sent: %d\n", __func__, cm36686->orig_prox_state);
+	proximity_enable_store(cm36686->proximity_dev, &dev_attr_proximity_enable, cm36686->orig_prox_state ? "1" : "0", 1);
+}
+#endif
+
 static int cm36686_i2c_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -1354,6 +1375,9 @@ static int cm36686_i2c_probe(struct i2c_client *client,
 	dev_set_drvdata(cm36686->light_dev, cm36686);
 
 	pr_info("%s is success.\n", __func__);
+#ifdef CYTTSP5_DT2W
+	cyttsp5_setsensor(cm36686);
+#endif
 	goto done;
 
 /* error, unwind it all */
