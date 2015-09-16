@@ -37,18 +37,9 @@
 #define FORCE_SATISFY_PALMPAUSE_FOR_LARGEOBJ
 #ifdef CYTTSP5_DT2W
 #define MS_TO_NS(x)	(x * 1E6L)
-static unsigned int dt2w_active = 0;
-static unsigned int dt2w_keyflag = 0;
-static unsigned int dt2w_touchCount = 0;
-static unsigned int dt2w_timerFlag = 0;
-static unsigned int dt2w_x = 0;
-static unsigned int dt2w_y = 0;
-static unsigned int dt2w_cover = 0;
-static struct hrtimer dt2w_timer;
-static ktime_t dt2w_ktime;
-static void cyttsp5_dt2w_timerStart(void);
-static void cyttsp5_dt2w_timerCancel(void);
-static struct wake_lock dt2w_wake_lock;
+
+static void cyttsp5_dt2w_timerStart(struct cyttsp5_mt_data *md);
+static void cyttsp5_dt2w_timerCancel(struct cyttsp5_mt_data *md);
 #endif
 
 
@@ -720,7 +711,7 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 		mt_sync_count++;
 		
 #ifdef CYTTSP5_DT2W
-		if ((cyttsp5_dt2w_check() > 0) && !(dt2w_keyflag > 0) && (dt2w_active))
+		if ((md->dt2w_status) && !(md->dt2w_keyflag > 0) && (md->dt2w_active))
 		{
 #if TOUCH_BOOSTER
 			touch_num = 0;
@@ -729,25 +720,25 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 			if ((tch->abs[CY_TCH_O] != CY_OBJ_HOVER) &&
 				(tch->abs[CY_TCH_E] == CY_EV_TOUCHDOWN))
 			{
-				dt2w_touchCount++;
-				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touchdown detected! # %d\n", __func__, dt2w_touchCount);
-				if (dt2w_touchCount > 1) {
-					cyttsp5_dt2w_timerCancel();
-					if ((abs(dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(dt2w_y - tch->abs[CY_TCH_Y]) < 50))
+				md->dt2w_touchCount++;
+				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touchdown detected! # %d\n", __func__, md->dt2w_touchCount);
+				if (md->dt2w_touchCount > 1) {
+					cyttsp5_dt2w_timerCancel(md);
+					if ((abs(md->dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(md->dt2w_y - tch->abs[CY_TCH_Y]) < 50))
 					{
 						cyttsp5_vibrate(60);
 						tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
-						dt2w_keyflag = 1;
+						md->dt2w_keyflag = 1;
 						cyttsp5_presspwr();
 					} else {
-						dt2w_touchCount = 1;
-						cyttsp5_dt2w_timerStart();
+						md->dt2w_touchCount = 1;
+						cyttsp5_dt2w_timerStart(md);
 					}
 				} else {
-					cyttsp5_dt2w_timerStart();
+					cyttsp5_dt2w_timerStart(md);
 				}
-				dt2w_x = tch->abs[CY_TCH_X];
-				dt2w_y = tch->abs[CY_TCH_Y];
+				md->dt2w_x = tch->abs[CY_TCH_X];
+				md->dt2w_y = tch->abs[CY_TCH_Y];
 			}
 		}
 #endif
@@ -954,13 +945,15 @@ static int cyttsp5_mt_open(struct input_dev *input)
 {
 	struct device *dev = input->dev.parent;
 #ifdef CYTTSP5_DT2W
-	tsp_debug_dbg(true, dev, "%s:Open input device DT2W: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
-	if ((cyttsp5_dt2w_check() > 0) && (dt2w_active > 0) && !dt2w_cover)
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+	struct cyttsp5_mt_data *md = &cd->md;
+	tsp_debug_dbg(true, dev, "%s:Open input device DT2W: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
+	if ((md->dt2w_status) && (md->dt2w_active) && !(md->dt2w_cover))
 	{
 		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W, release wakelock\n", __func__);
-		cyttsp5_dt2w_timerCancel();
-		wake_unlock(&dt2w_wake_lock);
-		dt2w_active = 0;
+		cyttsp5_dt2w_timerCancel(md);
+		wake_unlock(&md->dt2w_wake_lock);
+		md->dt2w_active = 0;
 		return 0;
 	}
 #endif
@@ -996,17 +989,17 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	struct cyttsp5_mt_data *md = &cd->md;
 	
 #ifdef CYTTSP5_DT2W
-	tsp_debug_dbg(true, dev, "%s:Close input device DT2W: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
-	if ((cyttsp5_dt2w_check() > 0) && !dt2w_cover)
+	tsp_debug_dbg(true, dev, "%s:Close input device DT2W: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
+	if ((md->dt2w_status) && !(md->dt2w_cover))
 	{
 		tsp_debug_dbg(true, dev, "%s:Prohibit touchscreen shutdown for DT2W\n", __func__);
 		cyttsp5_factory_command(dev, "clear_cover_mode", 0);
 		cyttsp5_factory_command(dev, "hover_enable", 0);
-		dt2w_active = 1;
-		dt2w_keyflag = 0;
-		dt2w_touchCount = 0;
-		wake_lock(&dt2w_wake_lock);
-		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete, hold wakelock: %d %d %d\n", __func__, cyttsp5_dt2w_check(),dt2w_active,dt2w_cover);
+		md->dt2w_active = 1;
+		md->dt2w_keyflag = 0;
+		md->dt2w_touchCount = 0;
+		wake_lock(&md->dt2w_wake_lock);
+		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete, hold wakelock: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
 		return;
 	}
 
@@ -1224,61 +1217,55 @@ static void cyttsp5_factory_command(struct device *_dev, const char *command, in
 
 static enum hrtimer_restart cyttsp5_dt2w_hrtimer_callback( struct hrtimer *timer )
 {
+	struct cyttsp5_mt_data *md = container_of(timer, struct cyttsp5_mt_data, dt2w_timer);
 	printk(KERN_INFO "%s: DT2W Timer finished, touch count reset\n", __func__);
-	dt2w_touchCount = 0;
+	md->dt2w_touchCount = 0;
   	return HRTIMER_NORESTART;
 }
 
-static void cyttsp5_dt2w_timerStart(void)
+static void cyttsp5_dt2w_timerStart(struct cyttsp5_mt_data *md)
 {
-	if (dt2w_timerFlag)
+	if (md->dt2w_timerFlag)
 	{
 		printk(KERN_INFO "%s: DT2W Timer started.\n", __func__);
-		hrtimer_start( &dt2w_timer, dt2w_ktime, HRTIMER_MODE_REL );	
+		hrtimer_start( &md->dt2w_timer, md->dt2w_ktime, HRTIMER_MODE_REL );	
 	}
 }
 
-static void cyttsp5_dt2w_timerCancel(void)
+static void cyttsp5_dt2w_timerCancel(struct cyttsp5_mt_data *md)
 {
-	if (dt2w_timerFlag)
+	if (md->dt2w_timerFlag)
 	{
 		printk(KERN_INFO "%s: DT2W Timer canceled.\n", __func__);
-		hrtimer_cancel(&dt2w_timer);	
+		hrtimer_cancel(&md->dt2w_timer);	
 	}
 }
 
-static void cyttsp5_dt2w_timerInit(void)
+static void cyttsp5_dt2w_timerInit(struct cyttsp5_mt_data *md)
 {
-	unsigned long delay_in_ms = 400L;
+	unsigned long delay_in_ms = 500L;
 	printk(KERN_INFO "%s: Setting up DT2W timer\n", __func__);
-	hrtimer_init( &dt2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
-  	dt2w_ktime = ktime_set( 0, MS_TO_NS(delay_in_ms) );
-  	dt2w_timer.function = &cyttsp5_dt2w_hrtimer_callback;
-  	dt2w_timerFlag = 1;
+	hrtimer_init( &md->dt2w_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+  	md->dt2w_ktime = ktime_set( 0, MS_TO_NS(delay_in_ms) );
+  	md->dt2w_timer.function = &cyttsp5_dt2w_hrtimer_callback;
+  	md->dt2w_timerFlag = 1;
 }
 
 void cyttsp5_dt2w_viewcoverNotify(struct device *_dev ,int value)
 {
-	struct cyttsp5_core_data *cd;
-	struct cyttsp5_mt_data *md;
+	struct cyttsp5_core_data *cd = dev_get_drvdata(_dev);
+	struct cyttsp5_mt_data *md = &cd->md;
 
 	printk(KERN_INFO "%s: DT2W: Notified of view cover status: %d \n", __func__, value);
-	dt2w_cover = value;
-	if (value && dt2w_active)
+	md->dt2w_cover = value;
+	if (value && md->dt2w_active)
 	{
-		dt2w_active = 0;
+		md->dt2w_active = 0;
+		printk(KERN_INFO "%s: DT2W: Release wakelock", __func__);
+		wake_unlock(&md->dt2w_wake_lock);
 		printk(KERN_INFO "%s: DT2W: View cover closed while panel active, attempt to suspend driver now.\n", __func__);
-		cd = dev_get_drvdata(_dev);
-		if (cd != NULL)
-		{
-			md = &cd->md;
-			if (md != NULL)
-			{
-				printk(KERN_INFO "%s: DT2W: Release wakelock", __func__);
-				wake_unlock(&dt2w_wake_lock);
-				cyttsp5_mt_close(md->input);
-			}
-		}
+		cyttsp5_mt_close(md->input);
+
 	}
 }
 #endif
@@ -1355,8 +1342,15 @@ int cyttsp5_mt_probe(struct device *dev)
 
 	tsp_debug_dbg(false, dev, "%s:done\n", __func__);
 #ifdef CYTTSP5_DT2W
-	cyttsp5_dt2w_timerInit();
-	wake_lock_init(&dt2w_wake_lock, WAKE_LOCK_SUSPEND, "dt2w_wake_hold");
+	md->dt2w_active = 0;
+	md->dt2w_keyflag = 0;
+	md->dt2w_touchCount = 0;
+	md->dt2w_timerFlag = 0;
+	md->dt2w_x = 0;
+	md->dt2w_y = 0;
+	md->dt2w_cover = 0;
+	cyttsp5_dt2w_timerInit(md);
+	wake_lock_init(&md->dt2w_wake_lock, WAKE_LOCK_SUSPEND, "dt2w_wake_hold");
 #endif
 	return 0;
 
@@ -1392,6 +1386,11 @@ int cyttsp5_mt_release(struct device *dev)
 		_cyttsp5_unsubscribe_attention(dev, CY_ATTEN_STARTUP,
 			CY_MODULE_MT, cyttsp5_setup_input_attention, 0);
 	}
+
+#ifdef CYTTSP5_DT2W
+	cyttsp5_dt2w_timerCancel(md);
+	wake_lock_destroy(&md->dt2w_wake_lock);
+#endif
 
 	return 0;
 }

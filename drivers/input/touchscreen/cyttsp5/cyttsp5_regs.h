@@ -23,6 +23,7 @@
 
 #ifndef _CYTTSP5_REGS_H
 #define _CYTTSP5_REGS_H
+#define CYTTSP5_DT2W
 
 #include <linux/device.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -786,6 +787,19 @@ struct cyttsp5_mt_data {
 	struct pm_qos_request tsp_mif_qos;
 	struct pm_qos_request tsp_int_qos;
 	unsigned char boost_level;
+#endif
+#ifdef CYTTSP5_DT2W
+	bool dt2w_active;
+	bool dt2w_keyflag;
+	unsigned int dt2w_touchCount;
+	bool dt2w_timerFlag;
+	unsigned int dt2w_x;
+	unsigned int dt2w_y;
+	bool dt2w_cover;
+	struct hrtimer dt2w_timer;
+	ktime_t dt2w_ktime;
+	struct wake_lock dt2w_wake_lock;
+	bool dt2w_status; 
 #endif
 };
 

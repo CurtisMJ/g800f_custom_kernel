@@ -37,11 +37,9 @@ static const char *cy_driver_core_version = CY_DRIVER_VERSION;
 static const char *cy_driver_core_date = CY_DRIVER_DATE;
 
 #ifdef CYTTSP5_DT2W
-static unsigned int dt2w_status = 1; 
-static struct input_dev *pwr_dev;
-static struct dc_motor_drvdata *vib_dev;
+struct input_dev *pwr_dev;
+struct dc_motor_drvdata *vib_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
-
 #endif
 
 struct cyttsp5_hid_field {
@@ -5585,34 +5583,31 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 static ssize_t cyttsp5_dt2w_status_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	ssize_t ret;
 
 	ret = snprintf(buf, CY_MAX_PRBUF_SIZE, "%d\n",
-			dt2w_status);
+			cd->md.dt2w_status);
 	return ret;
 }
 
 static ssize_t cyttsp5_dt2w_status_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	unsigned long value;
 	int ret;
 
 	ret = kstrtoul(buf, 10, &value);
-	if (ret < 0)
+	if ((ret < 0) || (ret > 1))
 		return ret;
 
-	dt2w_status = value;
+	cd->md.dt2w_status = value;
 
 	if (ret)
 		return ret;
 
 	return size;
-}
-
-unsigned int cyttsp5_dt2w_check(void)
-{
-	return dt2w_status;
 }
 
 void cyttsp5_setpwrdev(struct input_dev *input_device)
@@ -6099,6 +6094,9 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 			tsp_debug_err(true, cd->dev, "%s: calibration fail, rc=%d\n",
 			__func__, rc);
 	}
+#ifdef CYTTSP5_DT2W
+	cd->md.dt2w_status = 1;
+#endif
 	
 	return 0;
 
