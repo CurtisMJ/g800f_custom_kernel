@@ -720,12 +720,11 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 			if ((tch->abs[CY_TCH_O] != CY_OBJ_HOVER) &&
 				(tch->abs[CY_TCH_E] == CY_EV_TOUCHDOWN))
 			{
-				cyttsp5_pumpSensorData();
 				md->dt2w_touchCount++;
 				tsp_debug_dbg(true, dev, "%s:DTW2 Active! Touchdown detected! # %d\n", __func__, md->dt2w_touchCount);
 				if (md->dt2w_touchCount > 1) {
 					cyttsp5_dt2w_timerCancel(md);
-					if ((abs(md->dt2w_x - tch->abs[CY_TCH_X]) < 80) && (abs(md->dt2w_y - tch->abs[CY_TCH_Y]) < 80))
+					if ((abs(md->dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(md->dt2w_y - tch->abs[CY_TCH_Y]) < 50))
 					{
 						cyttsp5_vibrate(60);
 						tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);

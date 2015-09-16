@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA  02110-1301, USA.
  */
-#define CYTTSP5_DT2W
+
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/i2c.h>
@@ -33,9 +33,6 @@
 #include <linux/uaccess.h>
 #include <linux/sensor/cm36686.h>
 #include <linux/sensor/sensors_core.h>
-#ifdef CYTTSP5_DT2W
-#include <linux/cyttsp5/cyttsp5_core.h>
-#endif
 
 /* For debugging */
 #undef	cm36686_DEBUG
@@ -117,6 +114,37 @@ static u16 ps_reg_init_setting[PS_REG_NUM][2] = {
 	{REG_PS_THD_LOW, DEFUALT_LOW_THD},	/* REG_PS_THD_LOW */
 	{REG_PS_THD_HIGH, DEFUALT_HI_THD},	/* REG_PS_THD_HIGH */
 	{REG_PS_CANC, 0x0000},	/* REG_PS_CANC */
+};
+
+/* driver data */
+struct cm36686_data {
+	struct i2c_client *i2c_client;
+	struct wake_lock prx_wake_lock;
+	struct input_dev *proximity_input_dev;
+	struct input_dev *light_input_dev;
+	struct cm36686_platform_data *pdata;
+	struct mutex power_lock;
+	struct mutex read_lock;
+	struct hrtimer light_timer;
+	struct hrtimer prox_timer;
+	struct workqueue_struct *light_wq;
+	struct workqueue_struct *prox_wq;
+	struct work_struct work_light;
+	struct work_struct work_prox;
+	struct device *proximity_dev;
+	struct device *light_dev;
+	ktime_t light_poll_delay;
+	ktime_t prox_poll_delay;
+	int irq;
+	u8 power_state;
+	int avg[3];
+	u16 als_data;
+	u16 white_data;
+	int count_log_time;
+	unsigned int uProxCalResult;
+
+	void (*cm36686_light_vddpower)(bool);
+	void (*cm36686_proxi_vddpower)(bool);
 };
 
 int cm36686_i2c_read_word(struct cm36686_data *cm36686, u8 command,
@@ -998,16 +1026,6 @@ static void cm36686_work_func_light(struct work_struct *work)
 	pr_info("%s, %u,%u\n", __func__,
 		cm36686->als_data, cm36686->white_data);
 #endif
-#ifdef CYTTSP5_DT2W
-	if (cm36686->single_pump_l)
-	{
-		cm36686->single_pump_l = false;
-		cyttsp5_push_light(cm36686->als_data, cm36686->white_data);
-		light_enable_store(cm36686->light_dev,
-					  NULL,
-					  "0", 1);
-	}
-#endif
 }
 
 static void proxsensor_get_avg_val(struct cm36686_data *cm36686)
@@ -1042,16 +1060,6 @@ static void cm36686_work_func_prox(struct work_struct *work)
 	struct cm36686_data *cm36686 = container_of(work, struct cm36686_data,
 						  work_prox);
 	proxsensor_get_avg_val(cm36686);
-#ifdef CYTTSP5_DT2W
-	if (cm36686->single_pump_p)
-	{
-		cm36686->single_pump_p = false;
-		cyttsp5_push_prox(cm36686->avg[0], cm36686->avg[1], cm36686->avg[2]);
-		proximity_enable_store(cm36686->proximity_dev,
-					  NULL,
-					  "0", 1);
-	}
-#endif
 }
 
 static enum hrtimer_restart cm36686_prox_timer_func(struct hrtimer *timer)
@@ -1062,23 +1070,6 @@ static enum hrtimer_restart cm36686_prox_timer_func(struct hrtimer *timer)
 	hrtimer_forward_now(&cm36686->prox_timer, cm36686->prox_poll_delay);
 	return HRTIMER_RESTART;
 }
-
-#ifdef CYTTSP5_DT2W
-void cm36686_pump_data(struct cm36686_data *cd)
-{
-	if (!cd->single_pump_l && cd->single_pump_p)
-	{
-		light_enable_store(cd->light_dev,
-					  NULL,
-					  "1", 1);
-		proximity_enable_store(cd->proximity_dev,
-					  NULL,
-					  "1", 1);
-	}
-	cd->single_pump_l = true;
-	cd->single_pump_p = true;
-}
-#endif
 
 static int cm36686_i2c_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
@@ -1363,12 +1354,6 @@ static int cm36686_i2c_probe(struct i2c_client *client,
 	dev_set_drvdata(cm36686->light_dev, cm36686);
 
 	pr_info("%s is success.\n", __func__);
-	
-#ifdef CYTTSP5_DT2W
-	cyttsp5_setsensordev(cm36686); 
-	cm36686->single_pump_l = false;
-	cm36686->single_pump_p = false;
-#endif
 	goto done;
 
 /* error, unwind it all */
