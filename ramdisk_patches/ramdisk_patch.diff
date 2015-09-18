@@ -275,8 +275,8 @@ diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 +echo "$TEMP2 C°"
 diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 --- old_rd/res/uci_p/config.json	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/config.json	2015-09-18 14:55:22.414592603 +0200
-@@ -0,0 +1,343 @@
++++ model_rd/res/uci_p/config.json	2015-09-19 00:44:28.987180086 +0200
+@@ -0,0 +1,369 @@
 +{
 +sections:[
 +      {
@@ -614,6 +614,32 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					label:"Enable DT2W",
 +					default:0,
 +					action:"generic /sys/class/input/input1/device/dt2w_status"
++				}
++			},
++			{
++               SPane:{
++                  title:"Ultra Kernel Samepage Merging",
++                  description:"This feature allows the compression of data in RAM by merging identical memory pages, here optimized for extra performance for lower powered processors. This should noticably improve multi-tasking capabilities, if only in specific situations."
++               }
++            },
++			 {
++				SCheckBox:{
++					label:"Enable UKSM",
++					default:0,
++					action:"generic /sys/kernel/mm/uksm/run"
++				}
++			},
++			{
++               SPane:{
++                  title:"Fading LED",
++                  description:"Fades the LED notification light in and out when pulsing for an aesthically pleasing effect."
++               }
++            },
++			 {
++				SCheckBox:{
++					label:"Enable Fading LED",
++					default:0,
++					action:"generic /sys/class/leds/led_r/fade"
 +				}
 +			},
 +         ]
