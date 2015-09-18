@@ -1,0 +1,630 @@
+diff -urN old_rd/init.rc new_rd/init.rc
+--- old_rd/init.rc	2015-09-18 14:07:32.536202161 +0200
++++ new_rd/init.rc	2015-09-18 14:06:43.049138405 +0200
+@@ -982,5 +982,11 @@
+     oneshot
+ # end of BT
+ 
++service user-init /system/bin/sh /sbin/initd.sh
++    class main
++    user root
++    oneshot
++
+ on property:sys.boot_completed=1
+     write /sys/block/mmcblk0/queue/scheduler cfq
++    start user-init
+diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_direc new_rd/res/uci_p/actions/boefflasnd_dac_direc
+--- old_rd/res/uci_p/actions/boefflasnd_dac_direc	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_dac_direc	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/dac_direct;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_direct |  sed -n -e '/DAC direct/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_over new_rd/res/uci_p/actions/boefflasnd_dac_over
+--- old_rd/res/uci_p/actions/boefflasnd_dac_over	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_dac_over	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/dac_oversampling;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_oversampling |  sed -n -e '/DAC oversampling/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_eq new_rd/res/uci_p/actions/boefflasnd_eq
+--- old_rd/res/uci_p/actions/boefflasnd_eq	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_eq	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,11 @@
++#!/system/bin/sh
++EQ_NODE="/sys/devices/virtual/misc/boeffla_sound/eq_gains"
++EQ_RAW=`cat $EQ_NODE |  sed -n -e '/EQ gains/ s/.*\: *//p'`;
++arreq=(`echo ${EQ_RAW}`);
++if [[ ! -z $1 ]];then
++	if [[ ! -z $2 ]]; then
++		arreq[$1]=$2;
++		echo "${arreq[0]} ${arreq[1]} ${arreq[2]} ${arreq[3]} ${arreq[4]}" > $EQ_NODE;
++	fi
++	echo ${arreq[$1]};
++fi
+diff -urN old_rd/res/uci_p/actions/boefflasnd_fll new_rd/res/uci_p/actions/boefflasnd_fll
+--- old_rd/res/uci_p/actions/boefflasnd_fll	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_fll	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/fll_tuning;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/fll_tuning |  sed -n -e '/FLL tuning/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_headeq new_rd/res/uci_p/actions/boefflasnd_headeq
+--- old_rd/res/uci_p/actions/boefflasnd_headeq	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_headeq	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/eq;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/eq |  sed -n -e '/EQ/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_headvol new_rd/res/uci_p/actions/boefflasnd_headvol
+--- old_rd/res/uci_p/actions/boefflasnd_headvol	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_headvol	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,27 @@
++#!/system/bin/sh
++RAW="/sys/devices/virtual/misc/boeffla_sound/headphone_volume";
++LEFT_RAW=`cat $RAW | sed -n '2p'`;
++RIGHT_RAW=`cat $RAW | sed -n '3p'`;
++LEFT=`echo $LEFT_RAW |  sed -n -e '/Left/ s/.*\: *//p'`;
++RIGHT=`echo $RIGHT_RAW |  sed -n -e '/Right/ s/.*\: *//p'`;
++if [[ ! -z $1 ]];then
++	if [[ ! -z $2 ]];then
++		case $1 in
++			left)
++			LEFT=$2;
++			;;
++			right)
++			RIGHT=$2;
++			;;
++		esac;
++		echo "$LEFT $RIGHT" > /sys/devices/virtual/misc/boeffla_sound/headphone_volume;
++	fi
++	case $1 in
++		left)
++		echo $LEFT;
++		;;
++		right)
++		echo $RIGHT;
++		;;
++	esac;
++fi
+diff -urN old_rd/res/uci_p/actions/boefflasnd_mono new_rd/res/uci_p/actions/boefflasnd_mono
+--- old_rd/res/uci_p/actions/boefflasnd_mono	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_mono	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/mono_downmix;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/mono_downmix |  sed -n -e '/Mono downmix/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_privmode new_rd/res/uci_p/actions/boefflasnd_privmode
+--- old_rd/res/uci_p/actions/boefflasnd_privmode	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_privmode	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/privacy_mode;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/privacy_mode |  sed -n -e '/Privacy mode/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_run new_rd/res/uci_p/actions/boefflasnd_run
+--- old_rd/res/uci_p/actions/boefflasnd_run	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_run	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/boeffla_sound;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/boeffla_sound |  sed -n -e '/Boeffla sound status/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_speakeq new_rd/res/uci_p/actions/boefflasnd_speakeq
+--- old_rd/res/uci_p/actions/boefflasnd_speakeq	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_speakeq	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/speaker_tuning;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/speaker_tuning |  sed -n -e '/Speaker tuning/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/boefflasnd_speakvol new_rd/res/uci_p/actions/boefflasnd_speakvol
+--- old_rd/res/uci_p/actions/boefflasnd_speakvol	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_speakvol	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,33 @@
++#!/system/bin/sh
++RAW="/sys/devices/virtual/misc/boeffla_sound/speaker_volume";
++LEFT_RAW=`cat $RAW | sed -n '2p'`;
++RIGHT_RAW=`cat $RAW | sed -n '3p'`;
++LEFT=`echo $LEFT_RAW |  sed -n -e '/Left/ s/.*\: *//p'`;
++RIGHT=`echo $RIGHT_RAW |  sed -n -e '/Right/ s/.*\: *//p'`;
++if [[ ! -z $1 ]];then
++	if [[ ! -z $2 ]];then
++		case $1 in
++			both)
++			LEFT=$2;
++			RIGHT=$2;;
++			left)
++			LEFT=$2;
++			;;
++			right)
++			RIGHT=$2;
++			;;
++		esac;
++		echo "$LEFT $RIGHT" > /sys/devices/virtual/misc/boeffla_sound/speaker_volume;
++	fi
++	case $1 in
++		both)
++		echo $LEFT;
++		;;
++		left)
++		echo $LEFT;
++		;;
++		right)
++		echo $RIGHT;
++		;;
++	esac;
++fi
+diff -urN old_rd/res/uci_p/actions/boefflasnd_stereoexp new_rd/res/uci_p/actions/boefflasnd_stereoexp
+--- old_rd/res/uci_p/actions/boefflasnd_stereoexp	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/boefflasnd_stereoexp	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,5 @@
++#!/system/bin/sh
++if [[ ! -z $1 ]];then
++	echo $1 > /sys/devices/virtual/misc/boeffla_sound/stereo_expansion;
++fi
++echo `cat /sys/devices/virtual/misc/boeffla_sound/stereo_expansion |  sed -n -e '/Stereo expansion/ s/.*\: *//p'`;
+diff -urN old_rd/res/uci_p/actions/bracket-option new_rd/res/uci_p/actions/bracket-option
+--- old_rd/res/uci_p/actions/bracket-option	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/bracket-option	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,9 @@
++#!/system/bin/sh
++if [ -f $1 ];then
++    if [[ ! -z $2 ]]; then
++        echo $2 > $1
++    fi
++    allSched=`cat $1`;
++	currSched=`expr match "$allSched" '.*\[\(.*\)\].*'`;
++	echo "$currSched";
++fi
+diff -urN old_rd/res/uci_p/actions/cpufreq new_rd/res/uci_p/actions/cpufreq
+--- old_rd/res/uci_p/actions/cpufreq	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/cpufreq	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,24 @@
++#!/system/bin/sh
++FREQRAW=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq`;
++FREQ=`expr $FREQRAW / 1000`;
++CORE0="$FREQ mhz";
++ONLINE=`cat /sys/devices/system/cpu/cpu1/online`
++CORE1="offline";
++case $ONLINE in
++			1)
++				CORE1=$CORE0;;
++esac;
++ONLINE=`cat /sys/devices/system/cpu/cpu2/online`
++CORE2="offline";
++case $ONLINE in
++			1)
++				CORE2=$CORE0;;
++esac;
++ONLINE=`cat /sys/devices/system/cpu/cpu3/online`
++CORE3="offline";
++case $ONLINE in
++			1)
++				CORE3=$CORE0;;
++esac;
++
++echo "Core 0 : $CORE0@nCore 1 : $CORE1@nCore 2 : $CORE2@nCore 3 : $CORE3"
+diff -urN old_rd/res/uci_p/actions/cpuset new_rd/res/uci_p/actions/cpuset
+--- old_rd/res/uci_p/actions/cpuset	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/cpuset	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,31 @@
++#!/system/bin/sh
++CURRGOV=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`;
++CURRMIN=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq`;
++CURRMAX=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq`;
++if [[ ! -z $1 ]];then
++    if [[ ! -z $2 ]]; then
++        case $1 in
++			gov)
++				echo $CURRMIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
++				echo $CURRMAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
++				echo $2 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor;;
++			min)
++				echo $2 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
++				echo $CURRMAX > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
++				echo $CURRGOV > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor;;
++			max)
++				echo $CURRMIN > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
++				echo $2 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
++				echo $CURRGOV > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor;;
++		esac;
++    fi
++
++    case $1 in
++			gov)
++				echo `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`;;
++			min)
++				echo `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq`;;
++			max)
++				echo `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq`;;
++		esac;
++fi
+diff -urN old_rd/res/uci_p/actions/generic new_rd/res/uci_p/actions/generic
+--- old_rd/res/uci_p/actions/generic	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/generic	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,8 @@
++#!/system/bin/sh
++if [ -f $1 ];then
++    if [[ ! -z $2 ]]; then
++        echo $2 > $1
++    fi
++
++    echo `cat $1`
++fi
+diff -urN old_rd/res/uci_p/actions/thermal new_rd/res/uci_p/actions/thermal
+--- old_rd/res/uci_p/actions/thermal	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/actions/thermal	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,4 @@
++#!/system/bin/sh
++TEMP=`cat /sys/devices/virtual/thermal/thermal_zone0/curr_temp`;
++TEMP2=`expr $TEMP / 10`
++echo "$TEMP2 C°"
+diff -urN old_rd/res/uci_p/config.json new_rd/res/uci_p/config.json
+--- old_rd/res/uci_p/config.json	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/res/uci_p/config.json	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,325 @@
++{
++sections:[
++      {
++         name:CPU,
++         elements:[
++         {
++               STitleBar:{
++                  title:"Frequency Settings",
++               }
++            },
++          {
++               SSeekBar:{
++                  title:"CPU max frequency",
++                  unit:"MHz",
++                  step:100000,
++                  weight:0.001,
++                  min:400000,
++                  max:1500000,
++                  default:1400000,
++                  action:"cpuset max"
++               }
++            },
++ 	    {
++               SSeekBar:{
++                  title:"CPU min frequency",
++                  unit:"MHz",
++                  step:100000,
++                  weight:0.001,
++                  min:400000,
++                  max:1400000,
++                  default:400000,
++                  action:"cpuset min"
++               }
++            },
++			{
++				SOptionList:{
++			                  title:"CPU Governor",
++			                  description:"Try not to change to 'interactive' upon changing from it as this could cause a timer related kernel panic. I'll try and investigate the bug.",
++			                  default:"interactive",
++			                  action:"cpuset gov",
++			                  values:[
++						"interactive",
++						"performance",
++						"intelliactive",
++						"zzmoove",
++			                  ],
++			                  notify:[
++			        {
++			            on:APPLY,
++			            do:[ REFRESH, CANCEL ],
++			            to:"/sys/devices/system/cpu/cpufreq"
++			        },
++			        {
++			            on:REFRESH,
++			            do:REFRESH,
++			            to:"/sys/devices/system/cpu/cpufreq"
++			        }
++			    ]
++               }
++            },
++            {
++				SLiveLabel:{
++					title:"Current CPU Frequency",
++					refresh:1000,
++					action:"cpufreq"
++				}
++			},
++			{
++				SLiveLabel:{
++					title:"Exynos Thermal Zone 0",
++					refresh:500,
++					action:"thermal"
++				}
++			},
++			{
++               STitleBar:{
++                  title:"Tunables",
++               }
++            },
++			{
++			STreeDescriptor:{
++			    path:"/sys/devices/system/cpu/cpufreq",
++			    generic: {
++			        directory: {
++			            STreeDescriptor:{
++			                generic: {
++			                    directory: {},
++			                    element: {
++			                        SGeneric: { title:"@NAME" }
++			                    }
++			                },
++			                exclude: [
++								"freq_table",
++								"max_freq",
++								"min_freq",
++								"boostpulse",
++								"sampling_rate_current",
++								"profile"
++			                ]
++			            }
++			        }
++			    },
++			}
++			},
++         ]
++      },
++      {
++		name:Sound,
++		elements:[
++			{
++               STitleBar:{
++                  title:"Boeffla sound engine",
++               }
++            },
++            {
++				SCheckBox:{
++					label:"Boeffla sound status",
++					default:0,
++					action:"boefflasnd_run"
++				}
++			},
++			{
++				SCheckBox:{
++					label:"Privacy mode",
++					description:"Mute speaker upon removing headset jack",
++					default:0,
++					action:"boefflasnd_privmode"
++				}
++			},
++			{
++				SCheckBox:{
++					label:"DAC direct",
++					description:"Bypass analoque",
++					default:0,
++					action:"boefflasnd_dac_direc"
++				}
++			},
++			{
++				SCheckBox:{
++					label:"DAC oversanpling",
++					description:"128x oversampling",
++					default:0,
++					action:"boefflasnd_dac_over"
++				}
++			},
++			{
++				SCheckBox:{
++					label:"FLL tuning",
++					default:0,
++					action:"boefflasnd_fll"
++				}
++			},
++			{
++				SCheckBox:{
++					label:"Mono downmix",
++					default:0,
++					action:"boefflasnd_mono"
++				}
++			},
++			{
++				SCheckBox:{
++					label:"Stereo expansion",
++					default:0,
++					action:"boefflasnd_stereoexp"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"Headset Volume Left",
++					max:63,
++					min:0,
++					default:57,
++					action:"boefflasnd_headvol left"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"Headset Volume Right",
++					max:63,
++					min:0,
++					default:57,
++					action:"boefflasnd_headvol right"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"Speaker Volume",
++					max:63,
++					min:0,
++					default:57,
++					action:"boefflasnd_speakvol both"
++				}
++			},
++			{
++				STitleBar:{
++					title:"Hardware Equalizer settings"
++							}
++			},
++			{
++				SCheckBox:{
++					label:"Headphone equalizer",
++					default:0,
++					action:"boefflasnd_headeq"
++				}
++			},
++			{
++				SCheckBox:{
++					label:"Speaker tuning",
++					default:0,
++					action:"boefflasnd_speakeq"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"EQ band 1(Low)",
++					max:12,
++					min:-12,
++					default:0,
++					action:"boefflasnd_eq 0"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"EQ band 2",
++					max:12,
++					min:-12,
++					default:0,
++					action:"boefflasnd_eq 1"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"EQ band 3(Mid)",
++					max:12,
++					min:-12,
++					default:0,
++					action:"boefflasnd_eq 2"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"EQ band 4",
++					max:12,
++					min:-12,
++					default:0,
++					action:"boefflasnd_eq 3"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"EQ band 5(High)",
++					max:12,
++					min:-12,
++					default:0,
++					action:"boefflasnd_eq 4"
++				}
++			},
++		]
++	  },
++	  {
++         name:I/O,
++         elements:[
++            {
++               SPane:{
++                  title:"I/O schedulers",
++                  description:"Set the active I/O elevator algorithm. The scheduler decides how to handle I/O requests and how to handle them."
++               }
++            },
++            {
++               SOptionList:{
++                  title:"Internal storage scheduler",
++                  default:cfq,
++                  action:"bracket-option /sys/block/mmcblk0/queue/scheduler",
++                  values:[
++                     noop,
++                     deadline,
++                     row,
++                     cfq,
++ 
++                  ]
++               }
++            },
++            {
++               SOptionList:{
++                  title:"SD card scheduler",
++                  default:cfq,
++                  action:"bracket-option /sys/block/mmcblk1/queue/scheduler",
++                  values:[
++                     noop,
++                     deadline,
++                     row,
++                     cfq,
++ 
++                  ]
++               }
++            },
++            {
++               SSeekBar:{
++                  title:"Internal storage read-ahead",
++                  description:"The read-ahead value on the internal phone memory.",
++                  max:2048,
++                  min:128,
++                  unit:"kB",
++                  step:128,
++                  default:256,
++                  action:"generic /sys/block/mmcblk0/queue/read_ahead_kb"
++               }
++            },
++            {
++               SSeekBar:{
++                  title:"SD card read-ahead",
++                  description:"The read-ahead value on the external SD card.",
++                  max:2048,
++                  min:128,
++                  unit:"kB",
++                  step:128,
++                  default:128,
++                  action:"generic /sys/block/mmcblk1/queue/read_ahead_kb"
++               }
++            },
++ 
++         ]
++      },
++	]
++}
+diff -urN old_rd/sbin/initd.sh new_rd/sbin/initd.sh
+--- old_rd/sbin/initd.sh	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/sbin/initd.sh	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,8 @@
++#!/system/bin/sh 
++export PATH=${PATH}:/system/bin:/system/xbin 
++mount -o remount rw /system 
++chmod 777 /system/etc/init.d/* 
++mount -o remount ro /system 
++for FILE in /system/etc/init.d/*; do 
++  sh $FILE 
++done
+diff -urN old_rd/sbin/uci new_rd/sbin/uci
+--- old_rd/sbin/uci	1970-01-01 02:00:00.000000000 +0200
++++ new_rd/sbin/uci	2015-09-18 14:06:43.049138405 +0200
+@@ -0,0 +1,10 @@
++#!/system/bin/sh
++UCI_P=/res/uci_p;
++UCI_CONFIG=$UCI_P/config.json;
++UCI_ACTION=$UCI_P/actions/;
++case "${1}" in
++  config)
++		cat $UCI_CONFIG;;
++  actionpath)
++		echo $UCI_ACTION;;
++esac;
