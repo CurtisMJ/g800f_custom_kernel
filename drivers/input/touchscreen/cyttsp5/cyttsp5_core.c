@@ -6157,7 +6157,7 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 			__func__, rc);
 	}
 #ifdef CYTTSP5_DT2W
-	cd->md.dt2w_status = 1;
+	cd->md.dt2w_status = 0;
 #endif
 	
 	return 0;
