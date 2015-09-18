@@ -5700,15 +5700,21 @@ void cyttsp5_stopSensors(void)
 
 void cyttsp5_startSensors(void)
 {
-	cm36686_storePowerState(sensor_data);
+	if (sensor_data)
+	{
+		cm36686_storePowerState(sensor_data);
+	}
 }
 
 void cyttsp5_syncSensors(void * mt_data)
 {
 	struct cyttsp5_mt_data *md = (struct cyttsp5_mt_data *)mt_data;
-	md->dt2w_sensorProx = sensor_data->dt2w_ps_data;
-	md->dt2w_sensorLightAls = sensor_data->als_data;
-	md->dt2w_sensorLightWhite = sensor_data->white_data;
+	if (sensor_data)
+	{
+		md->dt2w_sensorProx = sensor_data->dt2w_ps_data;
+		md->dt2w_sensorLightAls = sensor_data->als_data;
+		md->dt2w_sensorLightWhite = sensor_data->white_data;
+	}
 }
 #endif
 
