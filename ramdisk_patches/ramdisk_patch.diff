@@ -632,7 +632,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +			{
 +               SPane:{
 +                  title:"Fading LED",
-+                  description:"Fades the LED notification light in and out when pulsing for an aesthically pleasing effect."
++                  description:"Fades the LED notification light in and out when pulsing for an aesthetically pleasing effect."
 +               }
 +            },
 +			 {
