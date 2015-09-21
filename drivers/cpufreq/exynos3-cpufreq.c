@@ -567,6 +567,31 @@ static ssize_t show_freq_table(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t show_volt_table(struct kobject *kobj,
+			     struct attribute *attr, char *buf)
+{
+	int i, count = 0;
+	size_t tbl_sz = 0, pr_len;
+	struct cpufreq_frequency_table *freq_table = exynos_info->freq_table;
+
+	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++)
+		tbl_sz++;
+
+	if (!tbl_sz)
+		return -EINVAL;
+
+	pr_len = (size_t)((PAGE_SIZE - 2) / tbl_sz);
+
+	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
+		if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
+			count += snprintf(&buf[count], pr_len, "%d ",
+					exynos_info->volt_table[i]);
+	}
+
+	count += snprintf(&buf[count], 2, "\n");
+	return count;
+}
+
 static ssize_t show_min_freq(struct kobject *kobj,
 			     struct attribute *attr, char *buf)
 {
@@ -628,6 +653,7 @@ static ssize_t store_max_freq(struct kobject *kobj, struct attribute *attr,
 }
 
 define_one_global_ro(freq_table);
+define_one_global_ro(volt_table);
 define_one_global_rw(min_freq);
 define_one_global_rw(max_freq);
 
@@ -637,11 +663,14 @@ static struct global_attr cpufreq_min_limit =
 		__ATTR(cpufreq_min_limit, S_IRUGO | S_IWUSR, show_min_freq, store_min_freq);
 static struct global_attr cpufreq_max_limit =
 		__ATTR(cpufreq_max_limit, S_IRUGO | S_IWUSR, show_max_freq, store_max_freq);
+static struct global_attr voltage_table =
+		__ATTR(voltage_table, S_IRUGO, show_volt_table, NULL);
 
 static struct attribute *cpufreq_attributes[] = {
 	&freq_table.attr,
 	&min_freq.attr,
 	&max_freq.attr,
+	&volt_table.attr,
 	NULL
 };
 
@@ -869,6 +898,12 @@ static int __init exynos_cpufreq_init(void)
 		pr_err("%s: failed to create cpufreq_table sysfs interface\n", __func__);
 		goto err_cpufreq_table;
 	}
+	
+	ret = sysfs_create_file(cpufreq_global_kobject, &voltage_table.attr);
+	if (ret) {
+		pr_err("%s: failed to create voltage_table sysfs interface\n", __func__);
+		goto err_voltage_table;
+	}
 
 	ret = sysfs_create_file(cpufreq_global_kobject, &cpufreq_min_limit.attr);
 	if (ret) {
@@ -947,6 +982,8 @@ err_cpufreq_max_limit_power:
 err_cpufreq_max_limit:
 	sysfs_remove_file(cpufreq_global_kobject, &cpufreq_min_limit.attr);
 err_cpufreq_min_limit:
+	sysfs_remove_file(cpufreq_global_kobject, &voltage_table.attr);
+err_voltage_table:
 	sysfs_remove_file(cpufreq_global_kobject, &cpufreq_table.attr);
 err_cpufreq_table:
 	sysfs_remove_group(cpufreq_global_kobject, &cpufreq_attr_group);
