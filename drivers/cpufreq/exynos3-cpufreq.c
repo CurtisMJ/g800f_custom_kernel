@@ -32,6 +32,9 @@
 #include <plat/cpu.h>
 
 #define VOLT_RANGE_STEP		25000
+#define MIN_VOLT 800000
+#define MAX_VOLT_ 1400000
+#define VOLT_DIV		500
 
 #ifdef CONFIG_SMP
 struct lpj_info {
@@ -296,6 +299,7 @@ static int exynos_cpufreq_scale(unsigned int target_freq,
 	sec_debug_aux_log(SEC_DEBUG_AUXLOG_CPU_BUS_CLOCK_CHANGE,
 			"[ARM] set volt=%u,", regulator_get_voltage(arm_regulator));
 #endif
+//printk(KERN_INFO "[ARM] set volt=%u,", regulator_get_voltage(arm_regulator));
 out:
 	return ret;
 }
@@ -584,11 +588,57 @@ static ssize_t show_volt_table(struct kobject *kobj,
 
 	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
 		if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
-			count += snprintf(&buf[count], pr_len, "%d ",
-					exynos_info->volt_table[i]); /* in microvolts */
+			count += snprintf(&buf[count], pr_len, "%d %d ",
+					freq_table[i].frequency, exynos_info->volt_table[i]); /* in microvolts */
 	}
 
 	count += snprintf(&buf[count], 2, "\n");
+	return count;
+}
+
+static ssize_t store_volt_table(struct kobject *kobj, struct attribute *attr,
+			      const char *buf, size_t count)
+{
+	int target_freq, ret;
+	unsigned int microvolts;
+	struct cpufreq_frequency_table *table = exynos_info->freq_table;
+	int index;
+	int i;
+
+	ret = sscanf(buf, "%d %d", &target_freq, &microvolts);
+
+    if (ret != 2)
+        return -EINVAL;
+    
+    printk(KERN_INFO "[Voltage Control] CPU Voltage table change request : %d %d", target_freq, microvolts);
+    
+    microvolts = (microvolts / VOLT_DIV) * VOLT_DIV; /* integer operations should render a nice workable value */
+    
+    if ((microvolts < MIN_VOLT) || (microvolts > MAX_VOLT_))
+    {
+		printk(KERN_INFO "[Voltage Control] CPU Voltage table change request evaluation failed, abort : %d %d", target_freq, microvolts);
+		return -EINVAL;
+	}
+	
+	for (i = 0; (table[i].frequency != CPUFREQ_TABLE_END); i++) {
+		unsigned int freq = table[i].frequency;
+		if (freq == CPUFREQ_ENTRY_INVALID)
+			continue;
+
+		if (target_freq == freq) {
+			index = i;
+			break;
+		}
+	}
+
+	if (table[i].frequency == CPUFREQ_TABLE_END)
+		return -EINVAL;
+		
+	/* "index" is the index of the voltage table entry we want */
+	printk(KERN_INFO "[Voltage Control] CPU Voltage table change request evaluation success, setting values : %d %d", target_freq, microvolts);
+	
+	exynos_info->volt_table[index] = microvolts;	
+	
 	return count;
 }
 
@@ -653,7 +703,7 @@ static ssize_t store_max_freq(struct kobject *kobj, struct attribute *attr,
 }
 
 define_one_global_ro(freq_table);
-define_one_global_ro(volt_table);
+define_one_global_rw(volt_table);
 define_one_global_rw(min_freq);
 define_one_global_rw(max_freq);
 
@@ -664,7 +714,7 @@ static struct global_attr cpufreq_min_limit =
 static struct global_attr cpufreq_max_limit =
 		__ATTR(cpufreq_max_limit, S_IRUGO | S_IWUSR, show_max_freq, store_max_freq);
 static struct global_attr voltage_table =
-		__ATTR(voltage_table, S_IRUGO, show_volt_table, NULL);
+		__ATTR(voltage_table, S_IRUGO | S_IWUSR, show_volt_table, store_volt_table);
 
 static struct attribute *cpufreq_attributes[] = {
 	&freq_table.attr,
