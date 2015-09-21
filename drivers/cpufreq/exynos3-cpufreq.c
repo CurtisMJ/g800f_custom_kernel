@@ -585,7 +585,7 @@ static ssize_t show_volt_table(struct kobject *kobj,
 	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
 		if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
 			count += snprintf(&buf[count], pr_len, "%d ",
-					exynos_info->volt_table[i]);
+					exynos_info->volt_table[i]); /* in microvolts */
 	}
 
 	count += snprintf(&buf[count], 2, "\n");
