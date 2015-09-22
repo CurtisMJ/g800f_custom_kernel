@@ -662,7 +662,7 @@ static ssize_t show_volt_table(struct device *device,
 
 	list_for_each_entry_rcu(temp_opp, &dev_opp->opp_list, node) {
 		if (temp_opp->available)
-			len += sprintf(buf + len, "%lu %lu\n",
+			len += sprintf(buf + len, "%lu %lu ",
 					opp_get_freq(temp_opp),
 					opp_get_voltage(temp_opp));
 	}
