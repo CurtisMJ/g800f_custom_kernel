@@ -37,6 +37,8 @@
 #define SET_DREX_TIMING
 
 #define SAFE_MIF_VOLT(x)	(x + 25000)
+#define MAX_VOLT_ 1300000
+#define MIN_VOLT 800000
 
 #undef DVFS_BY_PLL_CHANGE
 
@@ -667,45 +669,44 @@ static ssize_t show_volt_table(struct device *device,
 	return len;
 }
 
-//static ssize_t store_volt_table(struct device *device,
-		//struct device_attribute *attr,
-		//const char *buf, size_t count)
-//{
-	//struct device_opp *dev_opp = find_device_opp(mif_dev);
-	//struct opp *temp_opp;
-	//int u[LV_END];
-	//int rest, t, i = 0;
+static ssize_t store_volt_table(struct device *device,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct device_opp *dev_opp = find_device_opp(mif_dev);
+	struct opp *temp_opp;
+	int u[LV_END];
+	int rest, t, i = 0;
 
-	//if ((t = read_into((int*)&u, LV_END, buf, count)) < 0)
-		//return -EINVAL;
+	if ((t = read_into((int*)&u, LV_END, buf, count)) < 0)
+		return -EINVAL;
 
-	//if (t == 2 && LV_END != 2) {
-		//temp_opp = opp_find_freq_exact(mif_dev, u[0], true);
-		//if(IS_ERR(temp_opp))
-			//return -EINVAL;
+	if (t == 2 && LV_END != 2) {
+		temp_opp = opp_find_freq_exact(mif_dev, u[0], true);
+		if(IS_ERR(temp_opp))
+			return -EINVAL;
 
-		//if ((rest = (u[1] % 6250)) != 0)
-			//u[1] += 6250 - rest;
+		if ((rest = (u[1] % 6250)) != 0)
+			u[1] += 6250 - rest;
 
-		//sanitize_min_max(u[1], 600000, 1300000);
-		//temp_opp->u_volt = u[1];
-	//} else {
-		//list_for_each_entry_rcu(temp_opp, &dev_opp->opp_list, node) {
-			//if (temp_opp->available) {
-				//if ((rest = (u[i] % 6250)) != 0)
-					//u[i] += 6250 - rest;
+		sanitize_min_max(u[1], MIN_VOLT, MAX_VOLT_);
+		temp_opp->u_volt = u[1];
+	} else {
+		list_for_each_entry_rcu(temp_opp, &dev_opp->opp_list, node) {
+			if (temp_opp->available) {
+				if ((rest = (u[i] % 6250)) != 0)
+					u[i] += 6250 - rest;
 
-				//sanitize_min_max(u[i], 600000, 1300000);
-				//temp_opp->u_volt = u[i++];
-			//}
-		//}
-	//}
+				sanitize_min_max(u[i], MIN_VOLT, MAX_VOLT_);
+				temp_opp->u_volt = u[i++];
+			}
+		}
+	}
 
-	//return count;
-//}
+	return count;
+}
 
-//static DEVICE_ATTR(volt_table, S_IRUGO | S_IWUSR, show_volt_table, store_volt_table);
-static DEVICE_ATTR(volt_table, S_IRUGO, show_volt_table, NULL);
+static DEVICE_ATTR(volt_table, S_IRUGO | S_IWUSR, show_volt_table, store_volt_table);
 
 static struct exynos_devfreq_platdata default_qos_mif_pd = {
 	.default_qos = 200000,
