@@ -370,6 +370,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +			                },
 +			                exclude: [
 +								"freq_table",
++								"volt_table",
 +								"max_freq",
 +								"min_freq",
 +								"boostpulse",
