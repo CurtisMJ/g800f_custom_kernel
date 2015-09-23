@@ -325,6 +325,36 @@ diff -urN old_rd/res/uci_p/actions/generic model_rd/res/uci_p/actions/generic
 +
 +    echo `cat $1`
 +fi
+diff -urN old_rd/res/uci_p/actions/gpuvolt model_rd/res/uci_p/actions/gpuvolt
+--- old_rd/res/uci_p/actions/gpuvolt	1970-01-01 02:00:00.000000000 +0200
++++ model_rd/res/uci_p/actions/gpuvolt	2015-09-23 22:25:18.468599237 +0200
+@@ -0,0 +1,18 @@
++#!/system/bin/sh
++VOLT_TABLE="/sys/devices/platform/mali_dev.0/volt_table"
++VOLT_TABLE_RAW=`cat $VOLT_TABLE`;
++arrvolt=(`echo ${VOLT_TABLE_RAW}`);
++count=0;
++if [[ ! -z $1 ]];then
++	if [[ ! -z $2 ]];then
++		echo "$1 $2" > $VOLT_TABLE;
++	fi
++	for i in "${arrvolt[@]}"
++	do
++		if [ $i == $1 ];then
++			echo ${arrvolt[`expr $count + 1`]}
++			break
++		fi
++		let count=count+1;
++	done
++fi
+diff -urN old_rd/res/uci_p/actions/gpuvoltdef model_rd/res/uci_p/actions/gpuvoltdef
+--- old_rd/res/uci_p/actions/gpuvoltdef	1970-01-01 02:00:00.000000000 +0200
++++ model_rd/res/uci_p/actions/gpuvoltdef	2015-09-23 22:26:03.411830497 +0200
+@@ -0,0 +1,4 @@
++#!/system/bin/sh
++VOLT_TABLE="/sys/devices/platform/mali_dev.0/volt_table"
++echo "-43 0" > $VOLT_TABLE
++echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 --- old_rd/res/uci_p/actions/thermal	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/thermal	2015-09-22 21:51:08.790382581 +0200
@@ -335,8 +365,8 @@ diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 +echo "$TEMP2 C°"
 diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 --- old_rd/res/uci_p/config.json	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/config.json	2015-09-23 13:36:26.330017576 +0200
-@@ -0,0 +1,648 @@
++++ model_rd/res/uci_p/config.json	2015-09-23 22:52:04.765572462 +0200
+@@ -0,0 +1,770 @@
 +{
 +sections:[
 +      {
@@ -689,7 +719,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:800000,
 +					min:-800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt -42"
 +				}
@@ -700,7 +730,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 1500000"
 +				}
@@ -711,7 +741,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 1400000"
 +				}
@@ -722,7 +752,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 1300000"
 +				}
@@ -733,7 +763,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 1200000"
 +				}
@@ -744,7 +774,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 1100000"
 +				}
@@ -755,7 +785,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 1000000"
 +				}
@@ -766,7 +796,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 900000"
 +				}
@@ -777,7 +807,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 800000"
 +				}
@@ -788,7 +818,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 700000"
 +				}
@@ -799,7 +829,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 600000"
 +				}
@@ -810,7 +840,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 500000"
 +				}
@@ -821,9 +851,131 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					max:1400000,
 +					min:800000,
 +					unit:"uV",
-+					step:500,
++					step:6250,
 +					default:0,
 +					action:"cpuvolt 400000"
++				}
++			},
++			{
++               SPane:{
++                  title:"GPU"
++               }
++            },
++            {
++               SButton:{
++                  label:"Restore Defaults",
++                  action:"gpuvoltdef"
++               }
++            },
++            {
++				SSeekBar:{
++					title:"Global Append",
++					description:"Upon saving, appends the given value to all values in the volt table and resets to zero. Please restart Synapse once saved to save new settings.",
++					max:800000,
++					min:-800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt -42"
++				}
++			},
++           {
++				SSeekBar:{
++					title:"533 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 533000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"450 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 450000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"440 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 440000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"340 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 340000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"300 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 300000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"266 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 266000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"225 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 225000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"160 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 160000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"150 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:12500,
++					default:0,
++					action:"gpuvolt 150000"
 +				}
 +			},
 +			{

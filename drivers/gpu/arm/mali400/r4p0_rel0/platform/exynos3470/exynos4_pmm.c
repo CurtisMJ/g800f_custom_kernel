@@ -19,10 +19,15 @@
 #include "exynos4_pmm.h"
 
 #include <linux/clk.h>
+#include <linux/sysfs_helpers.h>
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+
+#define MIN_VOLT 800000
+#define MAX_VOLT_ 1400000
+#define VOLT_DIV		12500
 
 #if defined(CONFIG_MALI400_PROFILING)
 #include "mali_osk_profiling.h"
@@ -206,6 +211,11 @@ MODULE_PARM_DESC(mali_dvfs_control, "Mali Current DVFS");
 DEVICE_ATTR(time_in_state, S_IRUGO|S_IWUSR, show_time_in_state, set_time_in_state);
 MODULE_PARM_DESC(time_in_state, "Time-in-state of Mali DVFS");
 #endif
+static ssize_t show_volt_table(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t set_volt_table(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+DEVICE_ATTR(volt_table, S_IRUGO|S_IWUSR, show_volt_table, set_volt_table);
+int *def_volt_table;
+void store_default_volts(void);
 MODULE_PARM_DESC(mali_gpu_clk, "Mali Current Clock");
 MODULE_PARM_DESC(mali_gpu_vol, "Mali Current Voltage");
 MODULE_PARM_DESC(mali_freq_table, "Mali frequency table");
@@ -962,6 +972,12 @@ _mali_osk_errcode_t mali_platform_init(struct device *dev)
 	if (device_create_file(dev, &dev_attr_time_in_state)) {
 		dev_err(dev, "Couldn't create sysfs file [time_in_state]\n");
 	}
+	
+	/* Create sysfs for volt table */
+	if (device_create_file(dev, &dev_attr_volt_table)) {
+		dev_err(dev, "Couldn't create sysfs file [volt_table]\n");
+	}
+
 
 	if (!clk_register_map)
 		clk_register_map = _mali_osk_mem_mapioregion(CLK_DIV_STAT_G3D, 0x20, CLK_DESC);
@@ -972,6 +988,8 @@ _mali_osk_errcode_t mali_platform_init(struct device *dev)
 	maliDvfsStatus.currentStep = MALI_DVFS_DEFAULT_STEP;
 #endif
 	mali_platform_power_mode_change(dev, MALI_POWER_MODE_ON);
+	
+	store_default_volts();
 
 	MALI_SUCCESS;
 }
@@ -1095,6 +1113,111 @@ ssize_t set_time_in_state(struct device *dev, struct device_attribute *attr, con
 	return count;
 }
 #endif
+
+static ssize_t show_volt_table(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int i, count = 0;
+	size_t tbl_sz = 0, pr_len;
+	struct asv_info *asv_g3d = asv_get(ID_G3D);
+	
+	tbl_sz = asv_g3d->dvfs_level_nr;
+
+	if (!tbl_sz)
+		return -EINVAL;
+
+	pr_len = (size_t)((PAGE_SIZE - 2) / tbl_sz);
+
+	for (i = 0; i < asv_g3d->dvfs_level_nr; i++) {
+		count += snprintf(&buf[count], pr_len, "%d %d ",
+			asv_g3d->asv_volt[i].asv_freq, asv_g3d->asv_volt[i].asv_value); /* in microvolts */
+	}
+	
+	count += snprintf(&buf[count], pr_len, "%d %d ",
+					-42, 0); /* magic */
+
+	count += snprintf(&buf[count], 2, "\n");
+	return count;
+}
+
+static ssize_t set_volt_table(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int target_freq, ret;
+	int microvolts;
+	struct asv_info *asv_g3d = asv_get(ID_G3D);
+	int index;
+	int i, rest;
+
+	ret = sscanf(buf, "%d %d", &target_freq, &microvolts);
+
+    if (ret != 2)
+        return -EINVAL;
+    
+    printk(KERN_INFO "[Voltage Control] GPU Voltage table change request : %d %d", target_freq, microvolts);
+    
+    if ((rest = (microvolts  % VOLT_DIV)) != 0)
+			microvolts  += VOLT_DIV - rest;
+    
+    if (target_freq == -42) // its magic!
+		goto appendAllVolts;
+		
+	if (target_freq == -43) // more magic!
+		goto restoreDefaultVolts;
+	
+	index = -1;
+	for (i = 0; i < asv_g3d->dvfs_level_nr; i++) {
+		unsigned int freq = asv_g3d->asv_volt[i].asv_freq;
+		if (target_freq == freq) {
+			index = i;
+			break;
+		}
+	}
+
+	if (index == -1)
+		return -EINVAL;
+		
+	sanitize_min_max(microvolts, MIN_VOLT, MAX_VOLT_);
+		
+	/* "index" is the index of the voltage table entry we want */
+	printk(KERN_INFO "[Voltage Control] GPU Voltage table change request evaluation success, setting values : %d %d", target_freq, microvolts);
+	
+	asv_g3d->asv_volt[index].asv_value = microvolts;	
+	
+	return count;
+	
+appendAllVolts:;
+
+	for (i = 0; i < asv_g3d->dvfs_level_nr; i++) {
+		unsigned int volt = 0; 
+		volt = asv_g3d->asv_volt[i].asv_value + microvolts;
+		sanitize_min_max(volt, MIN_VOLT, MAX_VOLT_)
+		asv_g3d->asv_volt[i].asv_value = volt;
+	}
+	printk(KERN_INFO "[Voltage Control] GPU Voltage table change request evaluation success, setting ALL values : %d %d", target_freq, microvolts);
+	return count;
+	
+restoreDefaultVolts:;
+	printk(KERN_INFO "[Voltage Control] GPU Voltage table change request evaluation success, setting DEFAULT values : %d %d", target_freq, microvolts);
+	if (def_volt_table != NULL)
+	{
+		for (i = 0; i < asv_g3d->dvfs_level_nr; i++) {
+			asv_g3d->asv_volt[i].asv_value = def_volt_table[i];
+		}
+	}
+	return count;
+}
+
+void store_default_volts(void)
+{
+	struct asv_info *asv_g3d = asv_get(ID_G3D);
+	int i = 0;
+	def_volt_table = kmalloc((sizeof(int) * asv_g3d->dvfs_level_nr), GFP_KERNEL);
+	if (def_volt_table != NULL)
+	{
+		for (i = 0; i < asv_g3d->dvfs_level_nr; i++) {
+			def_volt_table[i] = asv_g3d->asv_volt[i].asv_value;
+		}
+	}
+}
 
 int mali_dvfs_level_lock(void)
 {

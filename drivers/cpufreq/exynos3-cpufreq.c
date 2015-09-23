@@ -34,7 +34,7 @@
 #define VOLT_RANGE_STEP		25000
 #define MIN_VOLT 800000
 #define MAX_VOLT_ 1400000
-#define VOLT_DIV		500
+#define VOLT_DIV		6250
 
 #ifdef CONFIG_SMP
 struct lpj_info {
@@ -606,10 +606,10 @@ static ssize_t store_volt_table(struct kobject *kobj, struct attribute *attr,
 			      const char *buf, size_t count)
 {
 	int target_freq, ret;
-	unsigned int microvolts;
+	int microvolts;
 	struct cpufreq_frequency_table *table = exynos_info->freq_table;
 	int index;
-	int i;
+	int i, rest;
 
 	ret = sscanf(buf, "%d %d", &target_freq, &microvolts);
 
@@ -618,7 +618,8 @@ static ssize_t store_volt_table(struct kobject *kobj, struct attribute *attr,
     
     printk(KERN_INFO "[Voltage Control] CPU Voltage table change request : %d %d", target_freq, microvolts);
     
-    microvolts = (microvolts / VOLT_DIV) * VOLT_DIV; /* integer operations should render a nice workable value */
+    if ((rest = (microvolts  % VOLT_DIV)) != 0)
+			microvolts  += VOLT_DIV - rest;
     
     if (target_freq == -42) // its magic!
 		goto appendAllVolts;
