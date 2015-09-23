@@ -5714,6 +5714,12 @@ void cyttsp5_syncSensors(void * mt_data)
 		md->dt2w_sensorProx = sensor_data->dt2w_ps_data;
 		md->dt2w_sensorLightAls = sensor_data->als_data;
 		md->dt2w_sensorLightWhite = sensor_data->white_data;
+		md->dt2w_sensor_origProx = sensor_data->orig_prox_state;
+		/* a problem with dt2w was that it would turn on the screen while
+		 * a phone call was active, by detecting the user's face touching the screen
+		 * a solution is just to disable dt2w if the proximity sensor was
+		 * originally on, but some apps can be using it as well
+		 * but there is no other reliable way of detecting a phone call */ 
 	}
 }
 #endif

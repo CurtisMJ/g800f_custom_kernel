@@ -803,6 +803,7 @@ struct cyttsp5_mt_data {
 	u16 dt2w_sensorProx;
 	u16 dt2w_sensorLightAls;
 	u16 dt2w_sensorLightWhite;
+	bool dt2w_sensor_origProx;
 #endif
 };
 

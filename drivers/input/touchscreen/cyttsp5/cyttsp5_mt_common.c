@@ -730,7 +730,7 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 				{
 					if (md->dt2w_touchCount > 1) {
 						cyttsp5_dt2w_timerCancel(md);
-						if ((abs(md->dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(md->dt2w_y - tch->abs[CY_TCH_Y]) < 50))
+						if ((abs(md->dt2w_x - tch->abs[CY_TCH_X]) < 50) && (abs(md->dt2w_y - tch->abs[CY_TCH_Y]) < 50) && !(md->dt2w_sensor_origProx))
 						{
 							cyttsp5_vibrate(60);
 							tsp_debug_dbg(true, dev, "%s:DTW2 Active! Initiate Power!\n", __func__);
