@@ -190,6 +190,36 @@ diff -urN old_rd/res/uci_p/actions/bracket-option model_rd/res/uci_p/actions/bra
 +	currSched=`expr match "$allSched" '.*\[\(.*\)\].*'`;
 +	echo "$currSched";
 +fi
+diff -urN old_rd/res/uci_p/actions/busvolt model_rd/res/uci_p/actions/busvolt
+--- old_rd/res/uci_p/actions/busvolt	1970-01-01 02:00:00.000000000 +0200
++++ model_rd/res/uci_p/actions/busvolt	2015-09-23 12:56:14.407364941 +0200
+@@ -0,0 +1,18 @@
++#!/system/bin/sh
++VOLT_TABLE="$1"
++VOLT_TABLE_RAW=`cat $VOLT_TABLE`;
++arrvolt=(`echo ${VOLT_TABLE_RAW}`);
++count=0;
++if [[ ! -z $2 ]];then
++	if [[ ! -z $3 ]];then
++		echo "$2 $3" > $VOLT_TABLE;
++	fi
++	for i in "${arrvolt[@]}"
++	do
++		if [ $i == $2 ];then
++			echo ${arrvolt[`expr $count + 1`]}
++			break
++		fi
++		let count=count+1;
++	done
++fi
+diff -urN old_rd/res/uci_p/actions/busvoltdef model_rd/res/uci_p/actions/busvoltdef
+--- old_rd/res/uci_p/actions/busvoltdef	1970-01-01 02:00:00.000000000 +0200
++++ model_rd/res/uci_p/actions/busvoltdef	2015-09-23 13:36:00.318306507 +0200
+@@ -0,0 +1,4 @@
++#!/system/bin/sh
++VOLT_TABLE="$1"
++echo "-43 0" > $VOLT_TABLE
++echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/cpufreq model_rd/res/uci_p/actions/cpufreq
 --- old_rd/res/uci_p/actions/cpufreq	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/cpufreq	2015-09-22 21:51:08.790382581 +0200
@@ -275,6 +305,14 @@ diff -urN old_rd/res/uci_p/actions/cpuvolt model_rd/res/uci_p/actions/cpuvolt
 +		let count=count+1;
 +	done
 +fi
+diff -urN old_rd/res/uci_p/actions/cpuvoltdef model_rd/res/uci_p/actions/cpuvoltdef
+--- old_rd/res/uci_p/actions/cpuvoltdef	1970-01-01 02:00:00.000000000 +0200
++++ model_rd/res/uci_p/actions/cpuvoltdef	2015-09-23 12:18:25.344829873 +0200
+@@ -0,0 +1,4 @@
++#!/system/bin/sh
++VOLT_TABLE="/sys/devices/system/cpu/cpufreq/voltage_table"
++echo "-43 0" > $VOLT_TABLE
++echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/generic model_rd/res/uci_p/actions/generic
 --- old_rd/res/uci_p/actions/generic	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/generic	2015-09-22 21:51:08.790382581 +0200
@@ -297,8 +335,8 @@ diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 +echo "$TEMP2 C°"
 diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 --- old_rd/res/uci_p/config.json	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/config.json	2015-09-22 22:33:40.644755843 +0200
-@@ -0,0 +1,514 @@
++++ model_rd/res/uci_p/config.json	2015-09-23 13:36:26.330017576 +0200
+@@ -0,0 +1,648 @@
 +{
 +sections:[
 +      {
@@ -629,9 +667,33 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +         elements:[
 +         {
 +               SPane:{
++                  title:"NOTICE!",
++                  description:"Please do not change these settings if you don't know what you're doing! Incorrect settings could seriously damage your device and I'm not willing to help if that happens! If your device freezes after applying settings, pull out the battery and try again(Synapse should avoid applying the bugged settings upon reboot)."
++               }
++            },
++         {
++               SPane:{
 +                  title:"CPU"
 +               }
 +            },
++             {
++               SButton:{
++                  label:"Restore Defaults",
++                  action:"cpuvoltdef"
++               }
++            },
++            {
++				SSeekBar:{
++					title:"Global Append",
++					description:"Upon saving, appends the given value to all values in the volt table and resets to zero. Please restart Synapse once saved to save new settings.",
++					max:800000,
++					min:-800000,
++					unit:"uV",
++					step:500,
++					default:0,
++					action:"cpuvolt -42"
++				}
++			},
 +           {
 +				SSeekBar:{
 +					title:"1.5 GHZ",
@@ -762,6 +824,116 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +					step:500,
 +					default:0,
 +					action:"cpuvolt 400000"
++				}
++			},
++			{
++               SPane:{
++                  title:"MIF Bus"
++               }
++            },
++            {
++               SButton:{
++                  label:"Restore Defaults",
++                  action:"busvoltdef /sys/devices/platform/exynos4270-busfreq-mif/devfreq/exynos4270-busfreq-mif/volt_table"
++               }
++            },
++            {
++				SSeekBar:{
++					title:"400 MHZ",
++					max:1300000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-mif/devfreq/exynos4270-busfreq-mif/volt_table 400000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"267 MHZ",
++					max:1300000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-mif/devfreq/exynos4270-busfreq-mif/volt_table 267000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"200 MHZ",
++					max:1300000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-mif/devfreq/exynos4270-busfreq-mif/volt_table 200000"
++				}
++			},
++			{
++               SPane:{
++                  title:"INT Bus"
++               }
++            },
++            {
++               SButton:{
++                  label:"Restore Defaults",
++                  action:"busvoltdef /sys/devices/platform/exynos4270-busfreq-int/devfreq/exynos4270-busfreq-int/volt_table"
++               }
++            },
++			{
++				SSeekBar:{
++					title:"267 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-int/devfreq/exynos4270-busfreq-int/volt_table 267000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"200 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-int/devfreq/exynos4270-busfreq-int/volt_table 200000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"160 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-int/devfreq/exynos4270-busfreq-int/volt_table 160000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"133 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-int/devfreq/exynos4270-busfreq-int/volt_table 133000"
++				}
++			},
++			{
++				SSeekBar:{
++					title:"100 MHZ",
++					max:1400000,
++					min:800000,
++					unit:"uV",
++					step:6250,
++					default:0,
++					action:"busvolt /sys/devices/platform/exynos4270-busfreq-int/devfreq/exynos4270-busfreq-int/volt_table 100000"
 +				}
 +			},
 +         ]

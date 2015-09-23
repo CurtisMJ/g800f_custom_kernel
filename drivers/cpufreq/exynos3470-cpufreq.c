@@ -35,6 +35,7 @@ static struct clk *mout_apll;
 static struct clk *fout_apll;
 
 static unsigned int exynos3470_volt_table[CPUFREQ_LEVEL_END];
+static unsigned int exynos3470_default_volt_table[CPUFREQ_LEVEL_END];
 static unsigned int exynos3470_cpu_asv_abb[CPUFREQ_LEVEL_END];
 
 static struct cpufreq_frequency_table *exynos3470_freq_table;
@@ -553,6 +554,7 @@ static int __init set_volt_table(void)
 		pr_info("CPUFREQ L%d : %d uV ABB : %d\n", i,
 					exynos3470_volt_table[i],
 					exynos3470_cpu_asv_abb[i]);
+		exynos3470_default_volt_table[i] = exynos3470_volt_table[i];
 	}
 
 	if (samsung_rev() >= EXYNOS3470_REV_2_0) {
@@ -570,6 +572,15 @@ static int __init set_volt_table(void)
 
 	return 0;
 }
+
+void exynos3470_restoreDefaultVolts(void)
+{
+	unsigned int i;
+	for (i = 0; i < CPUFREQ_LEVEL_END; i++) {
+		exynos3470_volt_table[i] = exynos3470_default_volt_table[i];
+	}
+}
+EXPORT_SYMBOL(exynos3470_restoreDefaultVolts);
 
 int __init exynos3470_cpufreq_init(struct exynos_dvfs_info *info)
 {

@@ -99,6 +99,7 @@ struct mif_bus_opp_table mif_bus_opp_list[] = {
 };
 
 unsigned int exynos4270_mif_asv_abb[LV_END] = {0, };
+static unsigned int def_volt_table[LV_END] = {0, };
 
 struct mif_regs_value {
 	void __iomem *target_reg;
@@ -670,6 +671,23 @@ static ssize_t show_volt_table(struct device *device,
 	return len;
 }
 
+static void store_default_volts(struct device *device)
+{
+	struct device_opp *dev_opp = ERR_PTR(-ENODEV);
+	struct opp *temp_opp;
+	struct device *mif_dev = device->parent;
+	int count = 0;
+
+	dev_opp = find_device_opp(mif_dev);
+
+	list_for_each_entry_rcu(temp_opp, &dev_opp->opp_list, node) {
+		if (temp_opp->available) {
+			def_volt_table[count] = opp_get_voltage(temp_opp);
+			count++;
+			}
+	}
+}
+
 static ssize_t store_volt_table(struct device *device,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
@@ -682,6 +700,9 @@ static ssize_t store_volt_table(struct device *device,
 
 	if ((t = read_into((int*)&u, LV_END, buf, count)) < 0)
 		return -EINVAL;
+	
+	if (u[0] == -43) // magical 8 )=-~=-~
+		goto defVolts;
 
 	if (t == 2 && LV_END != 2) {
 		temp_opp = opp_find_freq_exact(mif_dev, u[0], true);
@@ -705,6 +726,16 @@ static ssize_t store_volt_table(struct device *device,
 		}
 	}
 
+	return count;
+	
+defVolts:;
+
+		list_for_each_entry_rcu(temp_opp, &dev_opp->opp_list, node) {
+			if (temp_opp->available) {
+				temp_opp->u_volt = def_volt_table[i++];
+			}
+		}
+	
 	return count;
 }
 
@@ -876,6 +907,8 @@ static __devinit int exynos4270_busfreq_mif_probe(struct platform_device *pdev)
 	pm_qos_update_request_timeout(&exynos4270_mif_qos, exynos4270_mif_devfreq_profile.initial_freq, 40000 * 1000);
 
 	register_reboot_notifier(&exynos4270_mif_reboot_notifier);
+	
+	store_default_volts(&data->devfreq->dev);
 
 	return 0;
 
