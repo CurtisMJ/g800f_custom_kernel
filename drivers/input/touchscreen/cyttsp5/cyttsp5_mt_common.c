@@ -1276,6 +1276,8 @@ void cyttsp5_dt2w_viewcoverNotify(struct device *_dev ,int value)
 	if (value && md->dt2w_active)
 	{
 		md->dt2w_active = 0;
+		cyttsp5_stopSensors();
+		cyttsp5_dt2w_timerCancel(md);
 		printk(KERN_INFO "%s: DT2W: Release wakelock", __func__);
 		wake_unlock(&md->dt2w_wake_lock);
 		printk(KERN_INFO "%s: DT2W: View cover closed while panel active, attempt to suspend driver now.\n", __func__);
