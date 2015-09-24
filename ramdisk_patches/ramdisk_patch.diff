@@ -192,22 +192,27 @@ diff -urN old_rd/res/uci_p/actions/bracket-option model_rd/res/uci_p/actions/bra
 +fi
 diff -urN old_rd/res/uci_p/actions/busvolt model_rd/res/uci_p/actions/busvolt
 --- old_rd/res/uci_p/actions/busvolt	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/busvolt	2015-09-23 12:56:14.407364941 +0200
-@@ -0,0 +1,18 @@
++++ model_rd/res/uci_p/actions/busvolt	2015-09-24 11:29:56.502283913 +0200
+@@ -0,0 +1,23 @@
 +#!/system/bin/sh
 +VOLT_TABLE="$1"
 +VOLT_TABLE_RAW=`cat $VOLT_TABLE`;
 +arrvolt=(`echo ${VOLT_TABLE_RAW}`);
 +count=0;
++count2=1;
 +if [[ ! -z $2 ]];then
 +	if [[ ! -z $3 ]];then
 +		echo "$2 $3" > $VOLT_TABLE;
 +	fi
 +	for i in "${arrvolt[@]}"
 +	do
-+		if [ $i == $2 ];then
-+			echo ${arrvolt[`expr $count + 1`]}
-+			break
++		let count2=count2+1;
++		if [ $count2 -eq 2 ];then
++			let count2=0;
++			if [ $i == $2 ];then
++				echo ${arrvolt[`expr $count + 1`]}
++				break
++			fi
 +		fi
 +		let count=count+1;
 +	done
@@ -285,22 +290,27 @@ diff -urN old_rd/res/uci_p/actions/cpuset model_rd/res/uci_p/actions/cpuset
 +fi
 diff -urN old_rd/res/uci_p/actions/cpuvolt model_rd/res/uci_p/actions/cpuvolt
 --- old_rd/res/uci_p/actions/cpuvolt	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/cpuvolt	2015-09-22 23:29:42.720738204 +0200
-@@ -0,0 +1,18 @@
++++ model_rd/res/uci_p/actions/cpuvolt	2015-09-24 11:29:58.078547107 +0200
+@@ -0,0 +1,23 @@
 +#!/system/bin/sh
 +VOLT_TABLE="/sys/devices/system/cpu/cpufreq/voltage_table"
 +VOLT_TABLE_RAW=`cat $VOLT_TABLE`;
 +arrvolt=(`echo ${VOLT_TABLE_RAW}`);
 +count=0;
++count2=1;
 +if [[ ! -z $1 ]];then
 +	if [[ ! -z $2 ]];then
 +		echo "$1 $2" > $VOLT_TABLE;
 +	fi
 +	for i in "${arrvolt[@]}"
 +	do
-+		if [ $i == $1 ];then
-+			echo ${arrvolt[`expr $count + 1`]}
-+			break
++		let count2=count2+1;
++		if [ $count2 -eq 2 ];then
++			let count2=0;
++			if [ $i == $1 ];then
++				echo ${arrvolt[`expr $count + 1`]}
++				break
++			fi
 +		fi
 +		let count=count+1;
 +	done
@@ -327,22 +337,27 @@ diff -urN old_rd/res/uci_p/actions/generic model_rd/res/uci_p/actions/generic
 +fi
 diff -urN old_rd/res/uci_p/actions/gpuvolt model_rd/res/uci_p/actions/gpuvolt
 --- old_rd/res/uci_p/actions/gpuvolt	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/gpuvolt	2015-09-23 22:25:18.468599237 +0200
-@@ -0,0 +1,18 @@
++++ model_rd/res/uci_p/actions/gpuvolt	2015-09-24 11:28:53.329131340 +0200
+@@ -0,0 +1,23 @@
 +#!/system/bin/sh
 +VOLT_TABLE="/sys/devices/platform/mali_dev.0/volt_table"
 +VOLT_TABLE_RAW=`cat $VOLT_TABLE`;
 +arrvolt=(`echo ${VOLT_TABLE_RAW}`);
 +count=0;
++count2=1;
 +if [[ ! -z $1 ]];then
 +	if [[ ! -z $2 ]];then
 +		echo "$1 $2" > $VOLT_TABLE;
 +	fi
 +	for i in "${arrvolt[@]}"
 +	do
-+		if [ $i == $1 ];then
-+			echo ${arrvolt[`expr $count + 1`]}
-+			break
++		let count2=count2+1;
++		if [ $count2 -eq 2 ];then
++			let count2=0;
++			if [ $i == $1 ];then
++				echo ${arrvolt[`expr $count + 1`]}
++				break
++			fi
 +		fi
 +		let count=count+1;
 +	done
