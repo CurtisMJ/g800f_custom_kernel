@@ -798,12 +798,13 @@ struct cyttsp5_mt_data {
 	bool dt2w_cover;
 	struct hrtimer dt2w_timer;
 	ktime_t dt2w_ktime;
-	struct wake_lock dt2w_wake_lock;
+//	struct wake_lock dt2w_wake_lock;
 	bool dt2w_status; 
 	u16 dt2w_sensorProx;
 	u16 dt2w_sensorLightAls;
 	u16 dt2w_sensorLightWhite;
 	bool dt2w_sensor_origProx;
+	bool dt2w_irq_wake_state;
 #endif
 };
 
