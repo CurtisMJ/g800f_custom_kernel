@@ -6046,16 +6046,16 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 
 	tsp_debug_dbg(false, dev, "%s: initialize threaded irq=%d\n", __func__, cd->irq);
 	irq_set_status_flags(cd->irq, IRQ_NOAUTOEN);
-#if 0
-	if (cd->cpdata->level_irq_udelay > 0)
+//#if 0
+	//if (cd->cpdata->level_irq_udelay > 0)
 		/* use level triggered interrupts */
-		irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
-	else
+		//irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
+	//else
 		/* use edge triggered interrupts */
-		irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
-#else
-	irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
-#endif
+		//irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
+//#else
+	irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT | IRQF_NO_SUSPEND;
+//#endif
 	rc = request_threaded_irq(cd->irq, NULL, cyttsp5_irq, irq_flags,
 		dev_name(dev), cd);
 	if (rc < 0) {
