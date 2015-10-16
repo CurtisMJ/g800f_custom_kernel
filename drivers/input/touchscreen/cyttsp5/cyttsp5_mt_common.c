@@ -965,19 +965,8 @@ static int cyttsp5_mt_open(struct input_dev *input)
 		disable_irq_wake(cd->irq);
 		md->dt2w_irq_wake_state = 0;
 	}
-	if ((md->dt2w_status) && (md->dt2w_active) && !(md->dt2w_cover))
-	{
-		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W, release wakelock\n", __func__);
-		//disable_irq_wake(cd->irq);
-		//md->dt2w_irq_wake_state = 0;
-		cyttsp5_stopSensors();
-		cyttsp5_dt2w_timerCancel(md);
-//		wake_unlock(&md->dt2w_wake_lock);
-		md->dt2w_active = 0;
-		tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);
-		return 0;
-	} else { 
-	tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);}
+
+	tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);
 #endif
 
 	tsp_debug_dbg(true, dev, "%s:\n", __func__);
@@ -999,6 +988,18 @@ static int cyttsp5_mt_open(struct input_dev *input)
 		cyttsp5_mt_wake_attention, 0);
 
 	cyttsp5_core_resume(dev);
+#ifdef CYTTSP5_DT2W
+	if ((md->dt2w_status) && (md->dt2w_active) && !(md->dt2w_cover))
+	{
+		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W, release wakelock\n", __func__);
+		//disable_irq_wake(cd->irq);
+		//md->dt2w_irq_wake_state = 0;
+		cyttsp5_stopSensors();
+		cyttsp5_dt2w_timerCancel(md);
+//		wake_unlock(&md->dt2w_wake_lock);
+		md->dt2w_active = 0;
+	} 
+#endif
 	return 0;
 }
 #ifdef CYTTSP5_DT2W
@@ -1031,10 +1032,8 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		cyttsp5_startSensors();
 		cyttsp5_enableSensors();
 		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete, hold wakelock: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
-		tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);
-		return;
-	} else { tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state); } 
-	
+	}
+	tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);
 #endif
 
 	tsp_debug_dbg(true, dev, "%s:\n", __func__);
@@ -1051,12 +1050,18 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		SW_GLOVE, false);
 	md->glove_switch = true;
 #endif
-
-	_cyttsp5_unsubscribe_attention(dev, CY_ATTEN_IRQ, CY_MODULE_MT,
-		cyttsp5_mt_attention, CY_MODE_OPERATIONAL);
-
+#ifdef CYTTSP5_DT2W
+	if ((md->dt2w_status) && !(md->dt2w_cover))
+	{
+#endif
+		_cyttsp5_unsubscribe_attention(dev, CY_ATTEN_IRQ, CY_MODULE_MT,
+			cyttsp5_mt_attention, CY_MODE_OPERATIONAL);
+#ifdef CYTTSP5_DT2W
+	}
+#endif
 	_cyttsp5_unsubscribe_attention(dev, CY_ATTEN_STARTUP, CY_MODULE_MT,
 		cyttsp5_startup_attention, 0);
+
 
 	mutex_lock(&md->mt_lock);
 	md->prevent_touch = 0;
