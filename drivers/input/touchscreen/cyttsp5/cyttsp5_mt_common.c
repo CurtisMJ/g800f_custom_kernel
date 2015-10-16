@@ -975,6 +975,7 @@ static int cyttsp5_mt_open(struct input_dev *input)
 //		wake_unlock(&md->dt2w_wake_lock);
 		md->dt2w_active = 0;
 		tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);
+		cyttsp5_mt_prevent_touch(dev, false);
 		return 0;
 	} else { 
 	tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);}
@@ -982,7 +983,7 @@ static int cyttsp5_mt_open(struct input_dev *input)
 
 	tsp_debug_dbg(true, dev, "%s:\n", __func__);
 
-	/* pm_runtime_get_sync(dev); */
+	pm_runtime_get_sync(dev);
 
 	dev_vdbg(dev, "%s: setup subscriptions\n", __func__);
 
@@ -1032,6 +1033,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		cyttsp5_enableSensors();
 		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete, hold wakelock: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
 		tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state);
+		cyttsp5_mt_prevent_touch(dev, true);
 		return;
 	} else { tsp_debug_dbg(true, dev, "%s:DT2W IRQ WAKE STATUS%d\n", __func__, md->dt2w_irq_wake_state); } 
 	
@@ -1062,7 +1064,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	md->prevent_touch = 0;
 	mutex_unlock(&md->mt_lock);
 
-	/* pm_runtime_put(dev); */
+	 pm_runtime_put(dev);
 	cyttsp5_core_suspend(dev);
 	
 }
@@ -1074,7 +1076,7 @@ static void cyttsp5_mt_early_suspend(struct early_suspend *h)
 		container_of(h, struct cyttsp5_mt_data, es);
 	struct device *dev = md->dev;
 
-	/* pm_runtime_put_sync(dev); */
+	pm_runtime_put_sync(dev);
 	cyttsp5_core_suspend(dev);
 
 	mutex_lock(&md->mt_lock);
@@ -1088,7 +1090,7 @@ static void cyttsp5_mt_late_resume(struct early_suspend *h)
 		container_of(h, struct cyttsp5_mt_data, es);
 	struct device *dev = md->dev;
 
-	/*pm_runtime_get(dev); */
+	pm_runtime_get(dev);
 	cyttsp5_core_resume(dev);
 
 	mutex_lock(&md->mt_lock);
@@ -1409,8 +1411,8 @@ int cyttsp5_mt_release(struct device *dev)
 	 * This check is to prevent pm_runtime usage_count drop below zero
 	 * because of removing the module while in suspended state
 	 */
-	/*if (md->is_suspended)
-		pm_runtime_get_noresume(dev);*/
+	if (md->is_suspended)
+		pm_runtime_get_noresume(dev);
 
 	unregister_early_suspend(&md->es);
 #endif

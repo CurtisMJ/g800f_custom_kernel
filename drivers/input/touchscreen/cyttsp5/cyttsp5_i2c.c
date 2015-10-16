@@ -163,7 +163,7 @@ static struct i2c_driver cyttsp5_i2c_driver = {
 	.driver = {
 		.name = CYTTSP5_I2C_NAME,
 		.owner = THIS_MODULE,
-/*		.pm = &cyttsp5_pm_ops,*/
+		.pm = &cyttsp5_pm_ops,
 		.of_match_table = cyttsp5_i2c_of_match,
 	},
 	.probe = cyttsp5_i2c_probe,
