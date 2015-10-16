@@ -209,11 +209,11 @@ static ssize_t cyttsp5_command_store(struct device *dev,
 	/* write ic_buf to log */
 	cyttsp5_pr_buf(dev, dad->pr_buf, dad->ic_buf, length, "ic_buf");
 
-	pm_runtime_get_sync(dev);
+	/*pm_runtime_get_sync(dev);*/
 	rc = cmd->cmd->user_cmd(dev, 1, CY_MAX_PRBUF_SIZE,
 			dad->response_buf, length, dad->ic_buf,
 			&dad->response_length);
-	pm_runtime_put(dev);
+	/*pm_runtime_put(dev);*/
 	if (rc) {
 		dad->response_length = 0;
 		dev_err(dev, "%s: Failed to store command\n", __func__);
@@ -287,7 +287,7 @@ static ssize_t tthe_get_panel_data_debugfs_read(struct file *filp,
 	if (!buf_out)
 		goto release_mutex;
 
-	pm_runtime_get_sync(dev);
+	/*pm_runtime_get_sync(dev);*/
 
 	rc = cmd->request_exclusive(dev, CY_REQUEST_EXCLUSIVE_TIMEOUT);
 	if (rc < 0)
@@ -337,7 +337,7 @@ static ssize_t tthe_get_panel_data_debugfs_read(struct file *filp,
 release_exclusive:
 	rc1 = cmd->release_exclusive(dev);
 put_runtime:
-	pm_runtime_put(dev);
+	/*pm_runtime_put(dev);*/
 
 	if (rc < 0)
 		goto release_mutex;

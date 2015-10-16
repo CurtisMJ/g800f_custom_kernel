@@ -5145,7 +5145,7 @@ static int cyttsp5_core_rt_suspend(struct device *dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	int rc;
-tsp_debug_dbg(true, dev, "%s\n", __func__);
+
 	rc = cyttsp5_core_sleep(cd, 0);
 	if (rc < 0) {
 		tsp_debug_err(true, dev, "%s: Error on sleep\n", __func__);
@@ -5158,7 +5158,7 @@ static int cyttsp5_core_rt_resume(struct device *dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	int rc;
-tsp_debug_dbg(true, dev, "%s\n", __func__);
+
 	rc = cyttsp5_core_wake(cd, 0);
 	if (rc < 0) {
 		tsp_debug_err(true, dev, "%s: Error on wake\n", __func__);
@@ -5566,7 +5566,7 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 	if (value > 0xFF && value < 0)
 		return -EINVAL;
 #endif
-	 pm_runtime_get_sync(dev);
+	/* pm_runtime_get_sync(dev);*/
 
 	mutex_lock(&cd->system_lock);
 	if (cd->sysinfo.ready && IS_PIP_VER_GE(&cd->sysinfo, 1, 2))
@@ -5575,7 +5575,7 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 		ret = -ENODEV;
 	mutex_unlock(&cd->system_lock);
 
-	pm_runtime_put(dev);
+	/* pm_runtime_put(dev);*/
 
 	if (ret)
 		return ret;
@@ -6222,8 +6222,8 @@ int cyttsp5_release(struct cyttsp5_core_data *cd)
 	 * Suspend the device before freeing the startup_work and stopping
 	 * the watchdog since sleep function restarts watchdog on failure
 	 */
-	pm_runtime_suspend(dev);
-	pm_runtime_disable(dev);
+	/*pm_runtime_suspend(dev);
+	pm_runtime_disable(dev);*/
 
 	cancel_work_sync(&cd->startup_work);
 

@@ -421,13 +421,13 @@ static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 	int retry = CYTTSP5_LOADER_FW_UPGRADE_RETRY_COUNT;
 	int rc;
 
-	pm_runtime_get_sync(dev);
+	/*pm_runtime_get_sync(dev);*/
 	tsp_debug_dbg(true, dev, "%s: cmd->request_exclusive = %p\n",
 		__func__, cmd->request_exclusive);
 
 	rc = cmd->request_exclusive(dev, CY_LDR_REQUEST_EXCLUSIVE_TIMEOUT);
 	if (rc < 0) {
-		pm_runtime_put(dev);
+		/*pm_runtime_put(dev);*/
 		goto exit;
 	}
 
@@ -446,7 +446,7 @@ static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 	}
 
 	cmd->release_exclusive(dev);
-	pm_runtime_put_sync(dev);
+	/*pm_runtime_put_sync(dev);*/
 
 	cmd->request_restart(dev);
 exit:
@@ -769,11 +769,11 @@ static int cyttsp5_upgrade_ttconfig(struct device *dev,
 	tsp_debug_dbg(false, dev, "%s: size:%d row_size=%d row_count=%d\n",
 		__func__, table_size, row_size, row_count);
 
-	pm_runtime_get_sync(dev);
+	/*pm_runtime_get_sync(dev);*/
 
 	rc = cmd->request_exclusive(dev, CY_LDR_REQUEST_EXCLUSIVE_TIMEOUT);
 	if (rc < 0) {
-		pm_runtime_put(dev);
+		/*pm_runtime_put(dev);*/
 		goto exit;
 	}
 
@@ -825,7 +825,7 @@ static int cyttsp5_upgrade_ttconfig(struct device *dev,
 
 release:
 	cmd->release_exclusive(dev);
-	pm_runtime_put_sync(dev);
+	/*pm_runtime_put_sync(dev);*/
 	if (!rc)
 		cmd->request_restart(dev);
 exit:
