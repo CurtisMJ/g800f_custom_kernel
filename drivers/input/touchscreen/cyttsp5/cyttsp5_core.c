@@ -6080,7 +6080,7 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 		/* use edge triggered interrupts */
 		irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 #else
-	irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
+	irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT | IRQF_NO_SUSPEND;
 #endif
 	rc = request_threaded_irq(cd->irq, NULL, cyttsp5_irq, irq_flags,
 		dev_name(dev), cd);
