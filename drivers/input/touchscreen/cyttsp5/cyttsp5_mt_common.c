@@ -992,6 +992,7 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	if ((md->dt2w_status) && (md->dt2w_active) && !(md->dt2w_cover))
 	{
 		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W, release wakelock\n", __func__);
+		pm_relax(cd->dev);
 		tsp_debug_dbg(true, dev, "%s:pm_relax\n", __func__);
 		//disable_irq_wake(cd->irq);
 		//md->dt2w_irq_wake_state = 0;
@@ -1029,6 +1030,7 @@ static void cyttsp5_mt_close(struct input_dev *input)
 		md->dt2w_active = 1;
 		md->dt2w_keyflag = 0;
 		md->dt2w_touchCount = 0;
+		pm_stay_awake(cd->dev);
 		tsp_debug_dbg(true, dev, "%s:pm_stay_awake\n", __func__);
 //		wake_lock(&md->dt2w_wake_lock);
 		cyttsp5_startSensors();
