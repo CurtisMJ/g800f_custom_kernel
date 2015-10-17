@@ -219,7 +219,7 @@ static int mdnie_send_sequence(struct mdnie_info *mdnie, const unsigned short *s
 #ifdef CONFIG_FB_S5P_MDNIE_HIJACK
 	// Yank555.lu : use hijack profile if hijack is enabled
 	if (hijack == HIJACK_ENABLED)
-		wbuf = &tune_hijack;
+		wbuf = tune_hijack;
 	else
 #endif
 	wbuf = seq;
@@ -308,7 +308,6 @@ void mdnie_update(struct mdnie_info *mdnie, u8 force)
 
 	return;
 }
-
 
 static void update_color_position(struct mdnie_info *mdnie, u16 idx)
 {
@@ -724,7 +723,7 @@ static ssize_t hijack_store(struct device * dev, struct device_attribute * attr,
 	switch (new_val) {
 		case HIJACK_DISABLED:
 		case HIJACK_ENABLED:	hijack = new_val;
-					mdnie_update(mdnie);
+					mdnie_update(mdnie, 0);
 					return size;
 		default:		return -EINVAL;
 	}
@@ -774,7 +773,7 @@ static ssize_t red_red_store(struct device * dev, struct device_attribute * attr
 			return -EINVAL;
 		tune_hijack[31] = (new_val << 8) + (tune_hijack[31] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -796,7 +795,7 @@ static ssize_t red_green_store(struct device * dev, struct device_attribute * at
 			return -EINVAL;
 		tune_hijack[33] = (new_val << 8) + (tune_hijack[33] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -818,7 +817,7 @@ static ssize_t red_blue_store(struct device * dev, struct device_attribute * att
 			return -EINVAL;
 		tune_hijack[35] = (new_val << 8) + (tune_hijack[35] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -842,7 +841,7 @@ static ssize_t cyan_red_store(struct device * dev, struct device_attribute * att
 			return -EINVAL;
 		tune_hijack[31] = new_val + (tune_hijack[31] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -864,7 +863,7 @@ static ssize_t cyan_green_store(struct device * dev, struct device_attribute * a
 			return -EINVAL;
 		tune_hijack[33] = new_val + (tune_hijack[33] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -886,7 +885,7 @@ static ssize_t cyan_blue_store(struct device * dev, struct device_attribute * at
 			return -EINVAL;
 		tune_hijack[35] = new_val + (tune_hijack[35] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -910,7 +909,7 @@ static ssize_t green_red_store(struct device * dev, struct device_attribute * at
 			return -EINVAL;
 		tune_hijack[37] = (new_val << 8) + (tune_hijack[37] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -932,7 +931,7 @@ static ssize_t green_green_store(struct device * dev, struct device_attribute * 
 			return -EINVAL;
 		tune_hijack[39] = (new_val << 8) + (tune_hijack[39] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -954,7 +953,7 @@ static ssize_t green_blue_store(struct device * dev, struct device_attribute * a
 			return -EINVAL;
 		tune_hijack[41] = (new_val << 8) + (tune_hijack[41] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -978,7 +977,7 @@ static ssize_t magenta_red_store(struct device * dev, struct device_attribute * 
 			return -EINVAL;
 		tune_hijack[37] = new_val + (tune_hijack[37] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1000,7 +999,7 @@ static ssize_t magenta_green_store(struct device * dev, struct device_attribute 
 			return -EINVAL;
 		tune_hijack[39] = new_val + (tune_hijack[39] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1022,7 +1021,7 @@ static ssize_t magenta_blue_store(struct device * dev, struct device_attribute *
 			return -EINVAL;
 		tune_hijack[41] = new_val + (tune_hijack[41] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1046,7 +1045,7 @@ static ssize_t blue_red_store(struct device * dev, struct device_attribute * att
 			return -EINVAL;
 		tune_hijack[43] = (new_val << 8) + (tune_hijack[43] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1068,7 +1067,7 @@ static ssize_t blue_green_store(struct device * dev, struct device_attribute * a
 			return -EINVAL;
 		tune_hijack[45] = (new_val << 8) + (tune_hijack[45] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1090,7 +1089,7 @@ static ssize_t blue_blue_store(struct device * dev, struct device_attribute * at
 			return -EINVAL;
 		tune_hijack[47] = (new_val << 8) + (tune_hijack[47] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1114,7 +1113,7 @@ static ssize_t yellow_red_store(struct device * dev, struct device_attribute * a
 			return -EINVAL;
 		tune_hijack[43] = new_val + (tune_hijack[43] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1136,7 +1135,7 @@ static ssize_t yellow_green_store(struct device * dev, struct device_attribute *
 			return -EINVAL;
 		tune_hijack[45] = new_val + (tune_hijack[45] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1158,7 +1157,7 @@ static ssize_t yellow_blue_store(struct device * dev, struct device_attribute * 
 			return -EINVAL;
 		tune_hijack[47] = new_val + (tune_hijack[47] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1185,7 +1184,7 @@ static ssize_t black_store(struct device * dev, struct device_attribute * attr, 
 		tune_hijack[51] = ((max(0,min(255, black_r + black))) << 8) + (tune_hijack[51] & 0x00FF);
 		tune_hijack[53] = ((max(0,min(255, black_b + black))) << 8) + (tune_hijack[53] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1208,7 +1207,7 @@ static ssize_t black_red_store(struct device * dev, struct device_attribute * at
 		black_r = new_val;
 		tune_hijack[49] = ((max(0,min(255, black_r + black))) << 8) + (tune_hijack[49] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1231,7 +1230,7 @@ static ssize_t black_green_store(struct device * dev, struct device_attribute * 
 		black_g = new_val;
 		tune_hijack[51] = ((max(0,min(255, black_r + black))) << 8) + (tune_hijack[51] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1254,7 +1253,7 @@ static ssize_t black_blue_store(struct device * dev, struct device_attribute * a
 		black_b = new_val;
 		tune_hijack[53] = ((max(0,min(255, black_b + black))) << 8) + (tune_hijack[53] & 0x00FF);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1278,7 +1277,7 @@ static ssize_t white_red_store(struct device * dev, struct device_attribute * at
 			return -EINVAL;
 		tune_hijack[49] = new_val + (tune_hijack[49] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1300,7 +1299,7 @@ static ssize_t white_green_store(struct device * dev, struct device_attribute * 
 			return -EINVAL;
 		tune_hijack[51] = new_val + (tune_hijack[51] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
@@ -1322,7 +1321,7 @@ static ssize_t white_blue_store(struct device * dev, struct device_attribute * a
 			return -EINVAL;
 		tune_hijack[53] = new_val + (tune_hijack[53] & 0xFF00);
 		if (hijack == HIJACK_ENABLED)
-			mdnie_update(mdnie);
+			mdnie_update(mdnie, 0);
 	}
 	return size;
 }
