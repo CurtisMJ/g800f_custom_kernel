@@ -372,10 +372,10 @@ diff -urN old_rd/res/uci_p/actions/gpuvoltdef model_rd/res/uci_p/actions/gpuvolt
 +echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/mdnie model_rd/res/uci_p/actions/mdnie
 --- old_rd/res/uci_p/actions/mdnie	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/mdnie	2015-10-17 23:50:30.458388552 +0200
++++ model_rd/res/uci_p/actions/mdnie	2015-10-18 00:32:40.050220120 +0200
 @@ -0,0 +1,31 @@
 +#!/system/bin/sh
-+if [ -f $1 ];then
++if [[ ! -z $1 ]];then
 +	file_r="/sys/class/mdnie/mdnie/$1_red";
 +	file_g="/sys/class/mdnie/mdnie/$1_green";
 +	file_b="/sys/class/mdnie/mdnie/$1_blue";
