@@ -372,15 +372,16 @@ diff -urN old_rd/res/uci_p/actions/gpuvoltdef model_rd/res/uci_p/actions/gpuvolt
 +echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/mdnie model_rd/res/uci_p/actions/mdnie
 --- old_rd/res/uci_p/actions/mdnie	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/mdnie	2015-10-18 00:32:40.050220120 +0200
-@@ -0,0 +1,31 @@
++++ model_rd/res/uci_p/actions/mdnie	2015-10-18 00:54:39.967302910 +0200
+@@ -0,0 +1,32 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
 +	file_r="/sys/class/mdnie/mdnie/$1_red";
 +	file_g="/sys/class/mdnie/mdnie/$1_green";
 +	file_b="/sys/class/mdnie/mdnie/$1_blue";
-+	
++
 +    if [[ ! -z $2 ]]; then
++
 +		input1=`echo $2 | cut -c 2-`
 +		hexinput=`echo $input1 | tr '[:lower:]' '[:upper:]'` #uppercaseing
 +		a=`echo $hexinput | cut -c-2`
@@ -415,8 +416,8 @@ diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 +echo "$TEMP2 C°"
 diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 --- old_rd/res/uci_p/config.json	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/config.json	2015-10-18 00:04:24.247709330 +0200
-@@ -0,0 +1,837 @@
++++ model_rd/res/uci_p/config.json	2015-10-18 00:49:40.916494946 +0200
+@@ -0,0 +1,844 @@
 +{
 +sections:[
 +      {
@@ -1149,6 +1150,13 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +                  description:"Hooks into Samsung's hardware driven colour calibration system. Allows custom calibration and a greater degree of flexibility than the accessibility wizard."
 +               }
 +            },
++            {
++				SCheckBox:{
++					label:"Enable Hijack",
++					default:0,
++					action:"generic /sys/class/mdnie/mdnie/hijack"
++				}
++			},
 +             {
 +               SColourPicker:{
 +                  title:"Red",
