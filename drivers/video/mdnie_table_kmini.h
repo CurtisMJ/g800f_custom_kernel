@@ -1382,6 +1382,43 @@ static unsigned short tune_outdoor_text[] = {
 	END_SEQ, 0x0000,
 };
 
+#ifdef CONFIG_FB_S5P_MDNIE_HIJACK
+// Yank555.lu/CurtisMJ : hijack profile (use *not* natural [rather tune-auto-ui] as base)
+static unsigned short tune_hijack[] = {
+	/*start K mini auto ui*/
+	0x0007,0x0006,	/*(0,1)DNR roi latency clk on 00 01 1 0*/
+	0x0009,0x0006,	/*(2,3)DE roi latency clk on 00 01 1 0*/
+	0x000a,0x0006,	/*(4,5)CS roi latency clk on 00 01 1 0*/
+	0x000b,0x0007,	/*(6,7)CC roi latency clk on 00 01 1 0*/
+	0x000c,0x0007,	/*(8,9)SCR roi latency clk on 00 01 1 0*/
+	0x005f,0x0080,	/*(10,11)CC chsel strength*/
+	0x0060,0x0000,	/*(12,13)CC lut r   0*/
+	0x0061,0x1090,	/*(14,15)CC lut r  16 144*/
+	0x0062,0x1da0,	/*(16,17)CC lut r  32 160*/
+	0x0063,0x30b0,	/*(18,19)CC lut r  48 176*/
+	0x0064,0x40c0,	/*(20,21)CC lut r  64 192*/
+	0x0065,0x50d0,	/*(22,23)CC lut r  80 208*/
+	0x0066,0x60e0,	/*(24,25)CC lut r  96 224*/
+	0x0067,0x70f0,	/*(26,27)CC lut r 112 240*/
+	0x0068,0x80ff,	/*(28,29)CC lut r 128 255*/
+	0x0091,0xff00,	/*(30,31)SCR RrCr*/
+	0x0092,0x00ff,	/*(32,33)SCR RgCg*/
+	0x0093,0x00ff,	/*(34,35)SCR RbCb*/
+	0x0094,0x00ff,	/*(36,37)SCR GrMr*/
+	0x0095,0xff00,	/*(38,39)SCR GgMg*/
+	0x0096,0x00ff,	/*(40,41)SCR GbMb*/
+	0x0097,0x00ff,	/*(42,43)SCR BrYr*/
+	0x0098,0x00ff,	/*(44,45)SCR BgYg*/
+	0x0099,0xff00,	/*(46,47)SCR BbYb*/
+	0x009a,0x00ff,	/*(48,49)SCR KrWr*/
+	0x009b,0x00ff,	/*(50,51)SCR KgWg*/
+	0x009c,0x00ff,	/*(52,53)SCR KbWb*/
+	0x00ff,0x0000,	/*(54,55)Mask Release*/
+	/*end*/
+	END_SEQ, 0x0000,/*(56,57)*/
+};
+#endif
+
 struct mdnie_tuning_info outdoor_table[OUTDOOR_MAX] = {
 	{"outdoor", tune_outdoor},
 	{"outdoor_text", tune_outdoor_text},

@@ -2081,6 +2081,13 @@ config FB_S5P_MDNIE
 	---help---
 	This enables support for Samsung MDNIE feature
 
+config FB_S5P_MDNIE_HIJACK
+	bool "Samsung MDNIE HiJack (by Yank555.lu)"
+	depends on FB_S5P
+	default n
+	---help---
+	This enables support to hijack Samsung MDNIE feature
+
 config FB_S5P_MDNIE_LITE
     bool "Samsung MDNIE LITE"
     depends on FB_S3C

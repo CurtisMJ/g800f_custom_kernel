@@ -83,6 +83,12 @@ struct mdnie_info {
 
 };
 
+#ifdef CONFIG_FB_S5P_MDNIE_HIJACK
+// Yank555.lu : Hijack switch
+#define HIJACK_DISABLED	0
+#define HIJACK_ENABLED	1
+#endif
+
 extern struct mdnie_info *g_mdnie;
 
 int s3c_mdnie_hw_init(void);
