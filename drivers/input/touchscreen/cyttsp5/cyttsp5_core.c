@@ -3941,14 +3941,7 @@ static int cyttsp5_core_poweroff_device_(struct cyttsp5_core_data *cd)
 
 	/* No need for cd->pdata->power check since we did it in probe */
 	cd->hw_power_state = false;
-#ifdef CYTTSP5_DT2W
-	if (!cd->md.dt2w_status)
-	{
-#endif
 	rc = cd->cpdata->power(cd->cpdata, 0, cd->dev, 0);
-#ifdef CYTTSP5_DT2W
-	} else { rc = 0; }
-#endif
 	if (rc < 0)
 		tsp_debug_err(true, cd->dev, "%s: HW Power down fails r=%d\n",
 				__func__, rc);
@@ -3966,9 +3959,7 @@ static int cyttsp5_core_sleep_(struct cyttsp5_core_data *cd)
 	else
 		rc = cyttsp5_put_device_into_sleep_(cd);
 #else
-
 	rc = cyttsp5_core_poweroff_device_(cd);
-
 #endif
 	mutex_lock(&cd->system_lock);
 	cd->sleep_state = SS_SLEEP_ON;
@@ -3994,10 +3985,7 @@ static int cyttsp5_core_sleep(struct cyttsp5_core_data *cd,
 		return 0;
 	}
 	cyttsp5_samsung_factory_suspend_attention(cd->dev);
-#ifdef CYTTSP5_DT2W
-	if (!cd->md.dt2w_status)
-	{
-#endif
+
 	mutex_lock(&cd->system_lock);
 	if (_disable_irq && cd->irq_enabled) {
 		cd->irq_enabled = false;
@@ -4007,9 +3995,6 @@ static int cyttsp5_core_sleep(struct cyttsp5_core_data *cd,
 		tsp_debug_dbg(true, cd->dev, "%s: irq disabled\n", __func__);
 	} else
 		mutex_unlock(&cd->system_lock);
-#ifdef CYTTSP5_DT2W
-	}
-#endif
 
 	rc = cyttsp5_core_sleep_(cd);
 
@@ -4271,17 +4256,11 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 		return IRQ_HANDLED;
 	} else
 		mutex_unlock(&cd->system_lock);
-#ifdef CYTTSP5_DT2W
-	if (!cd->md.dt2w_status)
-	{
-#endif
+
 	if (!cd->hw_power_state) {
 		tsp_debug_info(true, cd->dev, "%s: !cd->hw_power_state\n", __func__);
 		return IRQ_HANDLED;
 	}
-#ifdef CYTTSP5_DT2W
-	}
-#endif
 
 	if (cd->cpdata->irq_stat &&
 		cd->cpdata->irq_stat(cd->cpdata, cd->dev)) {
@@ -4821,12 +4800,7 @@ static int cyttsp5_core_wake(struct cyttsp5_core_data *cd,
 		tsp_debug_err(true, cd->dev, "%s: fail to release exclusive\n", __func__);
 	else
 		dev_vdbg(cd->dev, "%s: pass release exclusive\n", __func__);
-#ifdef CYTTSP5_DT2W
-	if (cd->md.dt2w_status)
-	{
-		cd->cpdata->power(cd->cpdata, 0, cd->dev, 0);
-	}
-#endif
+
 	rc = cyttsp5_startup(cd);
 	if (rc < 0)
 		tsp_debug_err(true, cd->dev, "%s: Fail startup r=%d\n",
@@ -6080,7 +6054,7 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 		/* use edge triggered interrupts */
 		irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 #else
-	irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT | IRQF_NO_SUSPEND;
+	irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
 #endif
 	rc = request_threaded_irq(cd->irq, NULL, cyttsp5_irq, irq_flags,
 		dev_name(dev), cd);
