@@ -225,29 +225,6 @@ diff -urN old_rd/res/uci_p/actions/busvoltdef model_rd/res/uci_p/actions/busvolt
 +VOLT_TABLE="$1"
 +echo "-43 0" > $VOLT_TABLE
 +echo "Please restart Synapse to save changed settings"
-diff -urN old_rd/res/uci_p/actions/coltest model_rd/res/uci_p/actions/coltest
---- old_rd/res/uci_p/actions/coltest	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/coltest	2015-10-17 23:48:25.852621696 +0200
-@@ -0,0 +1,19 @@
-+#!/bin/bash
-+input1=`echo $1 | cut -c 2-`
-+echo $input1
-+hexinput=`echo $input1 | tr '[:lower:]' '[:upper:]'` #uppercaseing
-+		a=`echo $hexinput | cut -c-2`
-+		b=`echo $hexinput | cut -c3-4`
-+		c=`echo $hexinput | cut -c5-6`
-+
-+		r=`printf "%d" 0x$a`
-+		g=`printf "%d" 0x$b`
-+		b=`printf "%d" 0x$c`
-+ echo $r $g $b
-+
-+rhex1=`printf "%02x" $r` 
-+ghex1=`printf "%02x" $g` 
-+bhex1=`printf "%02x" $b` 
-+hexout="#$rhex1$ghex1$bhex1"
-+hexout1=`echo $hexout | tr '[:lower:]' '[:upper:]'`
-+echo $hexout1
 diff -urN old_rd/res/uci_p/actions/cpufreq model_rd/res/uci_p/actions/cpufreq
 --- old_rd/res/uci_p/actions/cpufreq	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/cpufreq	2015-09-22 21:51:08.790382581 +0200
