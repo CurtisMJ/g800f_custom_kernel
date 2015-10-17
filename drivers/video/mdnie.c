@@ -218,7 +218,8 @@ static int mdnie_send_sequence(struct mdnie_info *mdnie, const unsigned short *s
 	mutex_lock(&mdnie->dev_lock);
 #ifdef CONFIG_FB_S5P_MDNIE_HIJACK
 	// Yank555.lu : use hijack profile if hijack is enabled
-	if (hijack == HIJACK_ENABLED)
+	// CurtisMJ: but not when accessibility is active or in direct sunlight
+	if ((hijack == HIJACK_ENABLED) && !(IS_HBM(mdnie->auto_brightness)) && !(ACCESSIBILITY_IS_VALID(mdnie->accessibility)))
 		wbuf = tune_hijack;
 	else
 #endif
