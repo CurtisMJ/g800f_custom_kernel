@@ -1,0 +1,50 @@
+--- net/ipv4/ping.c
++++ net/ipv4/ping.c
+@@ -321,8 +313,8 @@ void ping_err(struct sk_buff *skb, u32 info)
+ 	struct iphdr *iph = (struct iphdr *)skb->data;
+ 	struct icmphdr *icmph = (struct icmphdr *)(skb->data+(iph->ihl<<2));
+ 	struct inet_sock *inet_sock;
+-	int type = icmp_hdr(skb)->type;
+-	int code = icmp_hdr(skb)->code;
++	int type = icmph->type;
++	int code = icmph->code;
+ 	struct net *net = dev_net(skb->dev);
+ 	struct sock *sk;
+ 	int harderr;
+@@ -624,6 +616,7 @@ static int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
+ 			size_t len, int noblock, int flags, int *addr_len)
+ {
+ 	struct inet_sock *isk = inet_sk(sk);
++	struct sockaddr_in *sin = (struct sockaddr_in *)msg->msg_name;
+ 	struct sk_buff *skb;
+ 	int copied, err;
+ 
+@@ -633,8 +626,11 @@ static int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
+ 	if (flags & MSG_OOB)
+ 		goto out;
+ 
++	if (addr_len)
++		*addr_len = sizeof(*sin);
++
+ 	if (flags & MSG_ERRQUEUE)
+-		return ip_recv_error(sk, msg, len, addr_len);
++		return ip_recv_error(sk, msg, len);
+ 
+ 	skb = skb_recv_datagram(sk, flags, noblock, &err);
+ 	if (!skb)
+@@ -654,14 +650,11 @@ static int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
+ 	sock_recv_timestamp(msg, sk, skb);
+ 
+ 	/* Copy the address. */
+-	if (msg->msg_name) {
+-		struct sockaddr_in *sin = (struct sockaddr_in *)msg->msg_name;
+-
++	if (sin) {
+ 		sin->sin_family = AF_INET;
+ 		sin->sin_port = 0 /* skb->h.uh->source */;
+ 		sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
+ 		memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
+-		*addr_len = sizeof(*sin);
+ 	}
+ 	if (isk->cmsg_flags)
+ 		ip_cmsg_recv(msg, skb);

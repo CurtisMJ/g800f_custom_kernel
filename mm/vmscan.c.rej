@@ -1,0 +1,12 @@
+--- mm/vmscan.c
++++ mm/vmscan.c
+@@ -2846,7 +2836,8 @@ loop_again:
+ 				continue;
+ 			}
+ 
+-			if (!zone_balanced(zone, testorder, 0, end_zone)) {
++			if (!zone_watermark_ok_safe(zone, testorder,
++					high_wmark_pages(zone), end_zone, 0)) {
+ 				all_zones_ok = 0;
+ 				/*
+ 				 * We are still under min water mark.  This
