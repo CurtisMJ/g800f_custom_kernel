@@ -160,46 +160,6 @@ static int ecryptfs_file_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int rc;
 
-#ifdef CONFIG_WTL_ENCRYPTION_FILTER
-	if (crypt_stat->flags & ECRYPTFS_STRUCT_INITIALIZED
-		&& crypt_stat->flags & ECRYPTFS_POLICY_APPLIED
-		&& crypt_stat->flags & ECRYPTFS_ENCRYPTED
-		&& !(crypt_stat->flags & ECRYPTFS_KEY_VALID)
-		&& !(crypt_stat->flags & ECRYPTFS_KEY_SET)
-		&& crypt_stat->flags & ECRYPTFS_I_SIZE_INITIALIZED) {
-		crypt_stat->flags |= ECRYPTFS_ENCRYPTED_OTHER_DEVICE;
-	}
-	mutex_lock(&crypt_stat->cs_mutex);
-	if ((mount_crypt_stat->flags & ECRYPTFS_ENABLE_NEW_PASSTHROUGH)
-			&& (crypt_stat->flags & ECRYPTFS_ENCRYPTED)) {
-		if (ecryptfs_read_metadata(dentry)) {
-			crypt_stat->flags &= ~(ECRYPTFS_I_SIZE_INITIALIZED
-					| ECRYPTFS_ENCRYPTED);
-			rc = 0;
-			goto out;
-		}
-	} else if ((mount_crypt_stat->flags & ECRYPTFS_ENABLE_FILTERING)
-			&& (crypt_stat->flags & ECRYPTFS_ENCRYPTED)) {
-		struct dentry *fp_dentry =
-			ecryptfs_inode_to_private(inode)->lower_file->f_dentry;
-		char filename[NAME_MAX+1] = {0};
-		if (fp_dentry->d_name.len <= NAME_MAX)
-			memcpy(filename, fp_dentry->d_name.name,
-					fp_dentry->d_name.len + 1);
-
-		if (is_file_name_match(mount_crypt_stat, fp_dentry)
-			|| is_file_ext_match(mount_crypt_stat, filename)) {
-			if (ecryptfs_read_metadata(dentry))
-				crypt_stat->flags &=
-				~(ECRYPTFS_I_SIZE_INITIALIZED
-				| ECRYPTFS_ENCRYPTED);
-			rc = 0;
-			goto out;
-		}
-	}
-	mutex_unlock(&crypt_stat->cs_mutex);
-#endif
-
 	rc = generic_file_mmap(file, vma);
 	
 	if (!rc)

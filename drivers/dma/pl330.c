@@ -3146,7 +3146,6 @@ probe_err5:
 		tasklet_kill(&pch->task);
 	}
 	kfree(pdmac->peripherals);
-probe_err4:
 	pl330_del(pi);
 probe_err3:
 	free_irq(irq, pi);
