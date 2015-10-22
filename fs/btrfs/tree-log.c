@@ -727,6 +727,7 @@ static noinline int drop_one_dir_item(struct btrfs_trans_handle *trans,
 
 	iput(inode);
 
+	btrfs_run_delayed_items(trans, root);
 	return ret;
 }
 

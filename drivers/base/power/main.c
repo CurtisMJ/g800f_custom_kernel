@@ -1171,6 +1171,7 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 
 	dpm_wd_clear(&wd);
 
+Complete:
 	complete_all(&dev->power.completion);
 
 	if (error) {

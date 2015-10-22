@@ -1046,9 +1046,13 @@ static void s3c24xx_serial_pm(struct uart_port *port, unsigned int level,
 {
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
 	unsigned int umcon;
+	int timeout = 10000;
 
 	switch (level) {
 	case 3:
+		while (--timeout && !s3c24xx_serial_txempty_nofifo(port))
+			udelay(100);
+			
 		/* disable auto flow control & set nRTS for High */
 		umcon = rd_regl(port, S3C2410_UMCON);
 		umcon &= ~(S3C2410_UMCOM_AFC | S3C2410_UMCOM_RTS_LOW);
