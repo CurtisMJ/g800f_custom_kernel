@@ -1,0 +1,11 @@
+--- fs/btrfs/tree-log.c
++++ fs/btrfs/tree-log.c
+@@ -726,6 +762,8 @@ static noinline int drop_one_dir_item(struct btrfs_trans_handle *trans,
+ 	kfree(name);
+ 
+ 	iput(inode);
++
++	btrfs_run_delayed_items(trans, root);
+ 	return ret;
+ }
+ 

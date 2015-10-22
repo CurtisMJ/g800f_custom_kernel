@@ -1,0 +1,11 @@
+--- drivers/base/power/main.c
++++ drivers/base/power/main.c
+@@ -1095,6 +1103,8 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
+ 	}
+ 
+ 	device_unlock(dev);
++
++ Complete:
+ 	complete_all(&dev->power.completion);
+ 
+ 	if (error) {
