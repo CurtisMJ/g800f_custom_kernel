@@ -2924,8 +2924,7 @@ loop_again:
 				continue;
 			}
 
-			if (!zone_watermark_ok_safe(zone, testorder,
-					high_wmark_pages(zone), end_zone, 0)) {
+			if (!zone_balanced(zone, testorder, 0, end_zone)) {
 				unbalanced_zone = zone; // dunno // me either
 				/*
 				 * We are still under min water mark.  This
