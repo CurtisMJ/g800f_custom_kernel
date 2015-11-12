@@ -43,7 +43,6 @@
 
 #include <plat/regs-iic.h>
 #include <plat/iic.h>
-#define CYTTSP5_DT2W
 
 /* i2c controller state */
 
@@ -89,11 +88,6 @@ struct s3c24xx_i2c {
 #endif
 	unsigned int freq;
 };
-
-#ifdef CYTTSP5_DT2W
-bool dt2w_active;
-struct i2c_client *dt2w_client;
-#endif
 
 /* default platform data removed, dev should always carry data. */
 
@@ -151,7 +145,7 @@ static inline void s3c24xx_i2c_master_complete(struct s3c24xx_i2c *i2c, int ret)
 static inline void s3c24xx_i2c_disable_ack(struct s3c24xx_i2c *i2c)
 {
 	unsigned long tmp;
-	//printk(KERN_INFO "%s", __func__);
+
 	tmp = readl(i2c->regs + S3C2410_IICCON);
 	writel(tmp & ~S3C2410_IICCON_ACKEN, i2c->regs + S3C2410_IICCON);
 }
@@ -159,7 +153,7 @@ static inline void s3c24xx_i2c_disable_ack(struct s3c24xx_i2c *i2c)
 static inline void s3c24xx_i2c_enable_ack(struct s3c24xx_i2c *i2c)
 {
 	unsigned long tmp;
-	//printk(KERN_INFO "%s", __func__);
+
 	tmp = readl(i2c->regs + S3C2410_IICCON);
 	writel(tmp | S3C2410_IICCON_ACKEN, i2c->regs + S3C2410_IICCON);
 }
@@ -169,7 +163,7 @@ static inline void s3c24xx_i2c_enable_ack(struct s3c24xx_i2c *i2c)
 static inline void s3c24xx_i2c_disable_irq(struct s3c24xx_i2c *i2c)
 {
 	unsigned long tmp;
-	//printk(KERN_INFO "%s", __func__);
+
 	tmp = readl(i2c->regs + S3C2410_IICCON);
 	writel(tmp & ~S3C2410_IICCON_IRQEN, i2c->regs + S3C2410_IICCON);
 }
@@ -177,30 +171,11 @@ static inline void s3c24xx_i2c_disable_irq(struct s3c24xx_i2c *i2c)
 static inline void s3c24xx_i2c_enable_irq(struct s3c24xx_i2c *i2c)
 {
 	unsigned long tmp;
-	//printk(KERN_INFO "%s", __func__);
+
 	tmp = readl(i2c->regs + S3C2410_IICCON);
 	writel(tmp | S3C2410_IICCON_IRQEN, i2c->regs + S3C2410_IICCON);
 }
 
-#ifdef CYTTSP5_DT2W
-void s3c24xx_i2c_set_dt2w_state(bool active)
-{
-	printk(KERN_INFO "%s DT2W I2C active recieved, %s", __func__, active ? "active" : "inactive");
-	dt2w_active = active;
-}
-EXPORT_SYMBOL(s3c24xx_i2c_set_dt2w_state);
-void s3c24xx_i2c_set_dt2w_client(struct i2c_client *client)
-{
-	printk(KERN_INFO "%s DT2W I2C ref recieved, %s", __func__, client->name);
-	dt2w_client = client;
-}
-EXPORT_SYMBOL(s3c24xx_i2c_set_dt2w_client);
-static bool s3c24xx_i2c_dt2w_compare(struct s3c24xx_i2c *i2c)
-{
-	struct s3c24xx_i2c *_i2c_ = (struct s3c24xx_i2c *)dt2w_client->adapter->algo_data;
-	return (i2c == _i2c_);
-}
-#endif
 
 /* s3c24xx_i2c_message_start
  *
@@ -251,7 +226,7 @@ static inline void s3c24xx_i2c_stop(struct s3c24xx_i2c *i2c, int ret)
 {
 	unsigned long iicstat;
 	unsigned long iiccon;
-	//printk(KERN_INFO "%s", __func__);
+
 	dev_dbg(i2c->dev, "STOP\n");
 
 	/* stop the transfer */
@@ -885,7 +860,7 @@ static int s3c24xx_i2c_init(struct s3c24xx_i2c *i2c)
 {
 	unsigned long iicon = S3C2410_IICCON_IRQEN | S3C2410_IICCON_ACKEN;
 	struct s3c2410_platform_i2c *pdata;
-	printk(KERN_INFO "%s", __func__);
+
 	/* get the plafrom data */
 
 	pdata = i2c->pdata;
@@ -961,7 +936,7 @@ static int s3c24xx_i2c_probe(struct platform_device *pdev)
 	struct s3c2410_platform_i2c *pdata = NULL;
 	struct resource *res;
 	int ret;
-	printk(KERN_INFO "%s", __func__);
+
 	if (!pdev->dev.of_node) {
 		pdata = pdev->dev.platform_data;
 		if (!pdata) {
@@ -1131,7 +1106,7 @@ static int s3c24xx_i2c_probe(struct platform_device *pdev)
 static int s3c24xx_i2c_remove(struct platform_device *pdev)
 {
 	struct s3c24xx_i2c *i2c = platform_get_drvdata(pdev);
-	printk(KERN_INFO "%s", __func__);
+
 	pm_runtime_disable(&i2c->adap.dev);
 	pm_runtime_disable(&pdev->dev);
 
@@ -1157,19 +1132,7 @@ static int s3c24xx_i2c_suspend_noirq(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct s3c24xx_i2c *i2c = platform_get_drvdata(pdev);
-	
-	printk(KERN_INFO "%s", __func__);
-#ifdef CYTTSP5_DT2W
-	if (dt2w_active)
-	{
-		if (s3c24xx_i2c_dt2w_compare(i2c))
-		{
-			printk(KERN_INFO "%s Not suspending I2C as it is DT2W", __func__);
-			return 0;
-		}
-	}
-#endif
-	
+
 	i2c_lock_adapter(&i2c->adap);
 	i2c->is_suspended = true;
 	i2c_unlock_adapter(&i2c->adap);
@@ -1182,7 +1145,6 @@ static int s3c24xx_i2c_resume_noirq(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct s3c24xx_i2c *i2c = platform_get_drvdata(pdev);
 	int ret;
-	printk(KERN_INFO "%s", __func__);
 
 	i2c_lock_adapter(&i2c->adap);
 
@@ -1255,14 +1217,12 @@ static struct platform_driver s3c24xx_i2c_driver = {
 
 static int __init i2c_adap_s3c_init(void)
 {
-	printk(KERN_INFO "%s", __func__);
 	return platform_driver_register(&s3c24xx_i2c_driver);
 }
 subsys_initcall(i2c_adap_s3c_init);
 
 static void __exit i2c_adap_s3c_exit(void)
 {
-	printk(KERN_INFO "%s", __func__);
 	platform_driver_unregister(&s3c24xx_i2c_driver);
 }
 module_exit(i2c_adap_s3c_exit);
