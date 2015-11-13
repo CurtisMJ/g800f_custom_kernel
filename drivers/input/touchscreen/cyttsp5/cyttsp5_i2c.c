@@ -22,7 +22,6 @@
  */
 
 #include "cyttsp5_regs.h"
-#define CYTTSP5_DT2W
 
 #include <linux/i2c.h>
 
@@ -114,10 +113,6 @@ static struct of_device_id cyttsp5_i2c_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, cyttsp5_i2c_of_match);
 
-#ifdef CYTTSP5_DT2W
-void s3c24xx_i2c_set_dt2w_client(struct i2c_client *client);
-#endif
-
 static int cyttsp5_i2c_probe(struct i2c_client *client,
 	const struct i2c_device_id *i2c_id)
 {
@@ -132,9 +127,7 @@ static int cyttsp5_i2c_probe(struct i2c_client *client,
 	match = of_match_device(of_match_ptr(cyttsp5_i2c_of_match), dev);
 	if (match)
 		cyttsp5_devtree_create_and_get_pdata(dev);
-#ifdef CYTTSP5_DT2W
-	s3c24xx_i2c_set_dt2w_client(client);
-#endif
+
 	return cyttsp5_probe(&cyttsp5_i2c_bus_ops, &client->dev, client->irq,
 			  CY_I2C_DATA_SIZE);
 }

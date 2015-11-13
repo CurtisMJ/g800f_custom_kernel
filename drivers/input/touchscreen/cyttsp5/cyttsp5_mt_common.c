@@ -952,9 +952,7 @@ void cyttsp5_mt_stylus_enable(struct device *dev, bool enable)
 	}
 	mutex_unlock(&md->mt_lock);
 }
-#ifdef CYTTSP5_DT2W
-void s3c24xx_i2c_set_dt2w_state(bool active);
-#endif
+
 static int cyttsp5_mt_open(struct input_dev *input)
 {
 	struct device *dev = input->dev.parent;
@@ -962,19 +960,13 @@ static int cyttsp5_mt_open(struct input_dev *input)
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	struct cyttsp5_mt_data *md = &cd->md;
 	tsp_debug_dbg(true, dev, "%s:Open input device DT2W: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
-	if (md->dt2w_irq_wake_state) 
-	{
-		disable_irq_wake(cd->irq);
-		md->dt2w_irq_wake_state = 0;
-	}
 	if ((md->dt2w_status) && (md->dt2w_active) && !(md->dt2w_cover))
 	{
 		tsp_debug_dbg(true, dev, "%s:Touchscreen already active due to DT2W, release wakelock\n", __func__);
 		cyttsp5_stopSensors();
 		cyttsp5_dt2w_timerCancel(md);
-		//wake_unlock(&md->dt2w_wake_lock);
+		wake_unlock(&md->dt2w_wake_lock);
 		md->dt2w_active = 0;
-		s3c24xx_i2c_set_dt2w_state(md->dt2w_active);
 		return 0;
 	}
 #endif
@@ -1011,23 +1003,15 @@ static void cyttsp5_mt_close(struct input_dev *input)
 	
 #ifdef CYTTSP5_DT2W
 	tsp_debug_dbg(true, dev, "%s:Close input device DT2W: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
-	if (md->dt2w_irq_wake_state) 
-	{
-		disable_irq_wake(cd->irq);
-		md->dt2w_irq_wake_state = 0;
-	} 
 	if ((md->dt2w_status) && !(md->dt2w_cover))
 	{
 		tsp_debug_dbg(true, dev, "%s:Prohibit touchscreen shutdown for DT2W\n", __func__);
-		enable_irq_wake(cd->irq);
-		md->dt2w_irq_wake_state = 1;
 		cyttsp5_factory_command(dev, "clear_cover_mode", 0);
 		cyttsp5_factory_command(dev, "hover_enable", 0);
 		md->dt2w_active = 1;
-		s3c24xx_i2c_set_dt2w_state(md->dt2w_active);
 		md->dt2w_keyflag = 0;
 		md->dt2w_touchCount = 0;
-		//wake_lock(&md->dt2w_wake_lock);
+		wake_lock(&md->dt2w_wake_lock);
 		cyttsp5_startSensors();
 		cyttsp5_enableSensors();
 		tsp_debug_dbg(true, dev, "%s:Close input device DT2W complete, hold wakelock: %d %d %d\n", __func__, md->dt2w_status,md->dt2w_active,md->dt2w_cover);
@@ -1292,11 +1276,10 @@ void cyttsp5_dt2w_viewcoverNotify(struct device *_dev ,int value)
 	if (value && md->dt2w_active)
 	{
 		md->dt2w_active = 0;
-		s3c24xx_i2c_set_dt2w_state(md->dt2w_active);
 		cyttsp5_stopSensors();
 		cyttsp5_dt2w_timerCancel(md);
 		printk(KERN_INFO "%s: DT2W: Release wakelock", __func__);
-		//wake_unlock(&md->dt2w_wake_lock);
+		wake_unlock(&md->dt2w_wake_lock);
 		printk(KERN_INFO "%s: DT2W: View cover closed while panel active, attempt to suspend driver now.\n", __func__);
 		cyttsp5_mt_close(md->input);
 
@@ -1377,16 +1360,14 @@ int cyttsp5_mt_probe(struct device *dev)
 	tsp_debug_dbg(false, dev, "%s:done\n", __func__);
 #ifdef CYTTSP5_DT2W
 	md->dt2w_active = 0;
-	s3c24xx_i2c_set_dt2w_state(md->dt2w_active);
 	md->dt2w_keyflag = 0;
 	md->dt2w_touchCount = 0;
 	md->dt2w_timerFlag = 0;
 	md->dt2w_x = 0;
 	md->dt2w_y = 0;
 	md->dt2w_cover = 0;
-	md->dt2w_irq_wake_state = 0;
 	cyttsp5_dt2w_timerInit(md);
-	//wake_lock_init(&md->dt2w_wake_lock, WAKE_LOCK_SUSPEND, "dt2w_wake_hold");
+	wake_lock_init(&md->dt2w_wake_lock, WAKE_LOCK_SUSPEND, "dt2w_wake_hold");
 #endif
 	return 0;
 
@@ -1425,7 +1406,7 @@ int cyttsp5_mt_release(struct device *dev)
 
 #ifdef CYTTSP5_DT2W
 	cyttsp5_dt2w_timerCancel(md);
-	//wake_lock_destroy(&md->dt2w_wake_lock);
+	wake_lock_destroy(&md->dt2w_wake_lock);
 #endif
 
 	return 0;
