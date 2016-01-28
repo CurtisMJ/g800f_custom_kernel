@@ -234,7 +234,7 @@ void hci_le_ltk_neg_reply(struct hci_conn *conn)
 	memset(&cp, 0, sizeof(cp));
 
 	cp.handle = cpu_to_le16(conn->handle);
-	memcpy(cp.ltk, ltk, sizeof(cp.ltk));
+	//memcpy(cp.ltk, ltk, sizeof(cp.ltk));
 
 	hci_send_cmd(hdev, HCI_OP_LE_LTK_NEG_REPLY, sizeof(cp), &cp);
 }
