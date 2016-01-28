@@ -427,6 +427,7 @@ static int fimc_is_queue_open(struct fimc_is_queue *queue,
 	clear_bit(FIMC_IS_QUEUE_BUFFER_READY, &queue->state);
 	clear_bit(FIMC_IS_QUEUE_STREAM_ON, &queue->state);
 	memset(&queue->framecfg, 0, sizeof(struct fimc_is_frame_cfg));
+	fimc_is_frame_probe(&queue->framemgr, queue->id);
 
 	return ret;
 }
@@ -540,7 +541,7 @@ int fimc_is_queue_buffer_queue(struct fimc_is_queue *queue,
 	frame = &framemgr->frame[index];
 
 	/* uninitialized frame need to get info */
-	if (frame->memory == FRAME_UNI_MEM)
+	if (!test_bit(FRAME_INI_MEM, &frame->memory))
 		goto set_info;
 
 	/* plane count check */
@@ -617,7 +618,7 @@ set_info:
 		frame->stream_size = queue->framecfg.size[spare];
 	}
 
-	frame->memory = FRAME_INI_MEM;
+	set_bit(FRAME_INI_MEM, &frame->memory);
 
 	queue->buf_refcount++;
 
@@ -818,9 +819,16 @@ int fimc_is_video_open(struct fimc_is_video_ctx *vctx,
 		fimc_is_queue_open(q_src, buf_rdycount);
 
 		q_src->vbq = kzalloc(sizeof(struct vb2_queue), GFP_KERNEL);
+		if (!q_src->vbq) {
+			err("kzalloc is fail");
+			ret = -ENOMEM;
+			goto p_err;
+		}
+
 		ret = queue_init(vctx, q_src->vbq, NULL);
 		if (ret) {
 			err("queue_init fail");
+			kfree(q_src->vbq);
 			goto p_err;
 		}
 		break;
@@ -828,9 +836,16 @@ int fimc_is_video_open(struct fimc_is_video_ctx *vctx,
 		fimc_is_queue_open(q_dst, buf_rdycount);
 
 		q_dst->vbq = kzalloc(sizeof(struct vb2_queue), GFP_KERNEL);
+		if (!q_dst->vbq) {
+			err("kzalloc is fail");
+			ret = -ENOMEM;
+			goto p_err;
+		}
+
 		ret = queue_init(vctx, NULL, q_dst->vbq);
 		if (ret) {
 			err("queue_init fail");
+			kfree(q_dst->vbq);
 			goto p_err;
 		}
 		break;
@@ -839,10 +854,25 @@ int fimc_is_video_open(struct fimc_is_video_ctx *vctx,
 		fimc_is_queue_open(q_dst, buf_rdycount);
 
 		q_src->vbq = kzalloc(sizeof(struct vb2_queue), GFP_KERNEL);
+		if (!q_src->vbq) {
+			err("kzalloc is fail");
+			ret = -ENOMEM;
+			goto p_err;
+		}
+
 		q_dst->vbq = kzalloc(sizeof(struct vb2_queue), GFP_KERNEL);
+		if (!q_dst->vbq) {
+			err("kzalloc is fail");
+			kfree(q_src->vbq);
+			ret = -ENOMEM;
+			goto p_err;
+		}
+
 		ret = queue_init(vctx, q_src->vbq, q_dst->vbq);
 		if (ret) {
 			err("queue_init fail");
+			kfree(q_src->vbq);
+			kfree(q_dst->vbq);
 			goto p_err;
 		}
 		break;
@@ -1000,9 +1030,9 @@ int fimc_is_video_reqbufs(struct file *file,
 
 		if (!queue->buf_rdycount)
 			set_bit(FIMC_IS_QUEUE_BUFFER_READY, &queue->state);
-	}
 
-	fimc_is_frame_open(framemgr, queue->id, queue->buf_maxcount);
+		fimc_is_frame_open(framemgr, queue->buf_maxcount);
+	}
 
 p_err:
 	return ret;

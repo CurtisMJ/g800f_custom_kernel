@@ -189,6 +189,7 @@ static u8 SM5414_set_input_current_limit_data(
 {
 	u8 set_reg, curr_reg = 0;
 	u8 chg_en;
+	struct sec_charger_info *charger = i2c_get_clientdata(client);
 
 	if(input_current < 100)
 		input_current = 100;
@@ -198,9 +199,9 @@ static u8 SM5414_set_input_current_limit_data(
 	set_reg = (input_current - 100) / 50;
 	curr_reg = ((input_current % 100) >= 50) ? 1 : 0;
 
-	SM5414_i2c_read(client, SM5414_CTRL, &chg_en);
+	chg_en = gpio_get_value(charger->pdata->chg_gpio_en);
 
-	if (chg_en & CHARGE_EN) {
+	if (!chg_en) {
 		SM5414_i2c_write(client, SM5414_VBUSCTRL, &set_reg);
 	} else {
 		while (set_reg >= curr_reg) {
@@ -298,8 +299,7 @@ static void SM5414_charger_function_control(
 {
 	struct sec_charger_info *charger = i2c_get_clientdata(client);
 	union power_supply_propval value;
-	u8 ctrl;
-	u8 chg_en;
+	u8 suspend_en;
 
 	if (charger->cable_type == POWER_SUPPLY_TYPE_OTG) {
 		dev_info(&client->dev,
@@ -314,18 +314,18 @@ static void SM5414_charger_function_control(
 		// nCHG_EN is logic low so set 1 to disable charger
 		charger->is_fullcharged = false;
 		gpio_set_value((charger->pdata->chg_gpio_en), 1);
-		SM5414_set_toggle_charger(client, 0);
 	} else {
 		psy_do_property("sec-fuelgauge", get,
 				POWER_SUPPLY_PROP_CAPACITY, value);
 		if (value.intval > 0) {
-			/* Suspend enable for register reset */
-			ctrl = 0x44;
-			SM5414_i2c_write(client, SM5414_CTRL, &ctrl);
-			msleep(20);
+			SM5414_i2c_read(client, SM5414_CTRL, &suspend_en);
 
-			ctrl = 0x40;
-			SM5414_i2c_write(client, SM5414_CTRL, &ctrl);
+			/* Suspend enable for register reset */
+			suspend_en |= 0x04;
+			SM5414_i2c_write(client, SM5414_CTRL, &suspend_en);
+			msleep(20);
+			suspend_en &= ~0x04;
+			SM5414_i2c_write(client, SM5414_CTRL, &suspend_en);
 		}
 
 		dev_info(&client->dev, "%s : float voltage (%dmV)\n",
@@ -342,24 +342,20 @@ static void SM5414_charger_function_control(
 			client, charger->pdata->charging_current[
 				charger->cable_type].full_check_current_1st);
 
-		SM5414_i2c_read(client, SM5414_CTRL, &chg_en);
 
-		if (!(chg_en & CHARGE_EN)) {
-			SM5414_set_input_current_limit_data(client, 100);
-			// nCHG_EN is logic low so set 0 to enable charger
-			gpio_set_value((charger->pdata->chg_gpio_en), 0);
-			SM5414_set_toggle_charger(client, 1);
-			msleep(100);
+		SM5414_set_input_current_limit_data(client, 100);
+		// nCHG_EN is logic low so set 0 to enable charger
+		gpio_set_value((charger->pdata->chg_gpio_en), 0);
+		msleep(100);
 
-			/* Input current limit */
-			dev_info(&client->dev, "%s : input current (%dmA)\n",
-				__func__, charger->pdata->charging_current
-				[charger->cable_type].input_current_limit);
+		/* Input current limit */
+		dev_info(&client->dev, "%s : input current (%dmA)\n",
+			__func__, charger->pdata->charging_current
+			[charger->cable_type].input_current_limit);
 
-			SM5414_set_input_current_limit_data(
-				client, charger->pdata->charging_current
-				[charger->cable_type].input_current_limit);
-		}
+		SM5414_set_input_current_limit_data(
+			client, charger->pdata->charging_current
+			[charger->cable_type].input_current_limit);
 
 		/* Set fast charge current */
 		dev_info(&client->dev, "%s : fast charging current (%dmA), siop_level=%d\n",
@@ -389,12 +385,41 @@ static void SM5414_charger_otg_control(
 
 		/* disable charging */
 		gpio_set_value((charger->pdata->chg_gpio_en), 1);
+
+		/* turn on OTG */
+		SM5414_i2c_read(client, SM5414_CTRL, &data);
+		data |= 0x01;
+		SM5414_i2c_write(client, SM5414_CTRL, &data);
+	}
+}
+
+static void SM5414_charger_ps_control(
+				struct i2c_client *client, int enable)
+{
+	struct sec_charger_info *charger = i2c_get_clientdata(client);
+	u8 data;
+
+	/* turn on/off ENBOOST */
+	if (enable) {
+		/* disable charging */
+		gpio_set_value((charger->pdata->chg_gpio_en), 1);
 		SM5414_set_toggle_charger(client, 0);
 
 		/* turn on OTG */
 		SM5414_i2c_read(client, SM5414_CTRL, &data);
 		data |= 0x01;
 		SM5414_i2c_write(client, SM5414_CTRL, &data);
+
+		dev_info(&client->dev, "%s : ps enable\n", __func__);
+	} else {
+		SM5414_set_toggle_charger(client, 1);
+
+		/* turn off OTG */
+		SM5414_i2c_read(client, SM5414_CTRL, &data);
+		data &= 0xfe;
+		SM5414_i2c_write(client, SM5414_CTRL, &data);
+
+		dev_info(&client->dev, "%s : ps disable\n", __func__);
 	}
 }
 
@@ -431,10 +456,19 @@ bool sec_hal_chg_init(struct i2c_client *client)
 {
 	u8 reg_data;
 	u8 int1 = 0;
+	u8 chg_en = 0;
 	struct sec_charger_info *charger = i2c_get_clientdata(client);
 
 	dev_info(&client->dev, "%s: SM5414 Charger init (Starting)!! \n", __func__);
 	charger->is_fullcharged = false;
+
+	SM5414_i2c_read(client, SM5414_CTRL, &chg_en);
+	chg_en |= CHARGE_EN;
+	SM5414_i2c_write(client, SM5414_CTRL, &chg_en);
+	msleep(50);
+	SM5414_i2c_read(client, SM5414_CTRL, &chg_en);
+	dev_info(&client->dev,
+		"%s : chg_en value(07h register): 0x%02x\n", __func__, chg_en);
 
 	SM5414_i2c_read(client, SM5414_INT1, &int1);
 	dev_info(&client->dev,
@@ -474,6 +508,16 @@ bool sec_hal_chg_resume(struct i2c_client *client)
 
 bool sec_hal_chg_shutdown(struct i2c_client *client)
 {
+	struct sec_charger_info *charger = i2c_get_clientdata(client);
+	u8 data;
+
+	/* turn off OTG * enable chg */
+	SM5414_i2c_read(client, SM5414_CTRL, &data);
+	data &= 0xfe;
+	data |= CHARGE_EN;
+	SM5414_i2c_write(client, SM5414_CTRL, &data);
+	gpio_set_value((charger->pdata->chg_gpio_en), 0);
+
 	dev_info(&client->dev,
                 "%s: CHARGER - SM5414(charger shutdown)!!\n", __func__);
 
@@ -545,9 +589,18 @@ bool sec_hal_chg_set_property(struct i2c_client *client,
 			      enum power_supply_property psp,
 			      const union power_supply_propval *val)
 {
+	union power_supply_propval value;
+
 	switch (psp) {
 	/* val->intval : type */
 	case POWER_SUPPLY_PROP_ONLINE:
+		if (val->intval == POWER_SUPPLY_TYPE_POWER_SHARING) {
+			psy_do_property("ps", get,
+				POWER_SUPPLY_PROP_STATUS, value);
+			SM5414_charger_ps_control(client, value.intval);
+			break;
+		}
+
 		SM5414_charger_function_control(client);
 		SM5414_charger_otg_control(client);
 

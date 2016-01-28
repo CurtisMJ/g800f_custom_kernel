@@ -147,7 +147,7 @@ static int fimc_is_3aa_video_open(struct file *file)
 	info("[3A%d:V:%d] %s\n", GET_3AA_ID(video), vctx->instance, __func__);
 
 	refcount = atomic_read(&core->video_isp.refcount);
-	if (refcount > FIMC_IS_MAX_NODES) {
+	if (refcount > FIMC_IS_MAX_NODES || refcount < 1) {
 		err("invalid ischain refcount(%d)", refcount);
 		close_vctx(file, video, vctx);
 		ret = -EINVAL;
@@ -539,6 +539,153 @@ static int fimc_is_3aa_video_s_ctrl(struct file *file, void *priv,
 	switch (ctrl->id) {
 	case V4L2_CID_IS_FORCE_DONE:
 		set_bit(FIMC_IS_GROUP_REQUEST_FSTOP, &device->group_3aa.state);
+		break;
+	case V4L2_CID_IS_MAP_BUFFER:
+		{
+			struct fimc_is_queue *queue;
+			struct fimc_is_framemgr *framemgr;
+			struct fimc_is_frame *frame;
+			struct dma_buf *dmabuf;
+			struct dma_buf_attachment *attachment;
+			dma_addr_t dva;
+			struct v4l2_buffer *buf;
+			struct v4l2_plane *planes;
+			size_t size;
+			u32 write, plane, group_id;
+
+			size = sizeof(struct v4l2_buffer);
+			buf = kmalloc(size, GFP_KERNEL);
+			if (!buf) {
+				merr("kmalloc is fail", vctx);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			ret = copy_from_user(buf, (void __user *)ctrl->value, size);
+			if (ret) {
+				merr("copy_from_user is fail(%d)", vctx, ret);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			if (!V4L2_TYPE_IS_MULTIPLANAR(buf->type)) {
+				merr("single plane is not supported", vctx);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			if (buf->index >= FRAMEMGR_MAX_REQUEST) {
+				merr("buffer index is invalid(%d)", vctx, buf->index);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			if (buf->length > VIDEO_MAX_PLANES) {
+				merr("planes[%d] is invalid", vctx, buf->length);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			queue = GET_QUEUE(vctx, buf->type);
+			if (queue->vbq->memory != V4L2_MEMORY_DMABUF) {
+				merr("memory type(%d) is not supported", vctx, queue->vbq->memory);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			size = sizeof(struct v4l2_plane) * buf->length;
+			planes = kmalloc(size, GFP_KERNEL);
+			if (IS_ERR(planes)) {
+				merr("kmalloc is fail(%p)", vctx, planes);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			ret = copy_from_user(planes, (void __user *)buf->m.planes, size);
+			if (ret) {
+				merr("copy_from_user is fail(%d)", vctx, ret);
+				kfree(planes);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			framemgr = &queue->framemgr;
+			frame = &framemgr->frame[buf->index];
+			if (test_bit(FRAME_MAP_MEM, &frame->memory)) {
+				merr("this buffer(%d) is already mapped", vctx, buf->index);
+				kfree(planes);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			/* only last buffer need to map */
+			if (buf->length >= 1) {
+				plane = buf->length - 1;
+			} else {
+				merr("buffer length is not correct(%d)", vctx, buf->length);
+				kfree(planes);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			dmabuf = dma_buf_get(planes[plane].m.fd);
+			if (IS_ERR(dmabuf)) {
+				merr("dma_buf_get is fail(%p)", vctx, dmabuf);
+				kfree(planes);
+				kfree(buf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			attachment = dma_buf_attach(dmabuf, &device->pdev->dev);
+			if (IS_ERR(attachment)) {
+				merr("dma_buf_attach is fail(%p)", vctx, attachment);
+				kfree(planes);
+				kfree(buf);
+				dma_buf_put(dmabuf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			write = !V4L2_TYPE_IS_OUTPUT(buf->type);
+			dva = ion_iovmm_map(attachment, 0, dmabuf->size, write, plane);
+			if (IS_ERR_VALUE(dva)) {
+				merr("ion_iovmm_map is fail(%X)", vctx, dva);
+				kfree(planes);
+				kfree(buf);
+				dma_buf_detach(dmabuf, attachment);
+				dma_buf_put(dmabuf);
+				ret = -EINVAL;
+				goto p_err;
+			}
+
+			group_id = GROUP_ID(device->group_3aa.id);
+			ret = fimc_is_itf_map(device, group_id, dva, dmabuf->size);
+			if (ret) {
+				merr("fimc_is_itf_map is fail(%d)", vctx, ret);
+				kfree(planes);
+				kfree(buf);
+				dma_buf_detach(dmabuf, attachment);
+				dma_buf_put(dmabuf);
+				goto p_err;
+			}
+
+			minfo("[3AA:V] buffer%d.plane%d mapping\n", vctx, buf->index, plane);
+			set_bit(FRAME_MAP_MEM, &frame->memory);
+			dma_buf_detach(dmabuf, attachment);
+			dma_buf_put(dmabuf);
+			kfree(planes);
+			kfree(buf);
+		}
 		break;
 	default:
 		err("unsupported ioctl(%d)\n", ctrl->id);

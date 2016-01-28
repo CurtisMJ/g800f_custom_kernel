@@ -58,9 +58,9 @@
 #define DEF_SELFTEST_ACCEL_FS           (2 << 3)
 #define DEF_SELFTEST_GYRO_SENS          (32768 / 250)
 /* wait time before collecting data */
-#define DEF_GYRO_WAIT_TIME              10
-#define DEF_ST_STABLE_TIME              20
-#define DEF_ST_6500_STABLE_TIME         20
+#define DEF_GYRO_WAIT_TIME              10000
+#define DEF_ST_STABLE_TIME              20000
+#define DEF_ST_6500_STABLE_TIME         20000
 #define DEF_GYRO_SCALE                  131
 #define DEF_ST_PRECISION                1000
 #define DEF_ST_ACCEL_FS_MG              8000UL
@@ -471,7 +471,7 @@ int inv_get_silicon_rev_mpu6500(struct inv_mpu_state *st)
 		return -EINVAL;
 
 	/*memory read need more time after power up */
-	msleep(POWER_UP_TIME);
+	usleep_range(POWER_UP_TIME, POWER_UP_TIME + 1000);
 	result = mpu_memory_read(st, st->i2c_addr,
 			MPU6500_MEM_REV_ADDR, 1, &sw_rev);
 	sw_rev &= INV_MPU_REV_MASK;
@@ -512,7 +512,7 @@ int inv_get_silicon_rev_mpu6050(struct inv_mpu_state *st)
 		return result;
 	prod_ver &= 0xf;
 	/*memory read need more time after power up */
-	msleep(POWER_UP_TIME);
+	usleep_range(POWER_UP_TIME, POWER_UP_TIME + 1000);
 	result = mpu_memory_read(st, st->i2c_addr, mem_addr, 1, &prod_rev);
 	if (result)
 		return result;
@@ -958,7 +958,7 @@ static int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
 	if (result)
 		return result;
 	/* wait for the sampling rate change to stabilize */
-	mdelay(INV_MPU_SAMPLE_RATE_CHANGE_STABLE);
+	usleep_range(INV_MPU_SAMPLE_RATE_CHANGE_STABLE, INV_MPU_SAMPLE_RATE_CHANGE_STABLE + 1000);
 	result = inv_i2c_single_write(st, reg->gyro_config,
 		self_test_flag | DEF_SELFTEST_GYRO_FS);
 	if (result)
@@ -976,9 +976,9 @@ static int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
 	/* wait for the output to get stable */
 	if (self_test_flag) {
 		if (INV_MPU6500 == st->chip_type)
-			msleep(DEF_ST_6500_STABLE_TIME);
+			usleep_range(DEF_ST_6500_STABLE_TIME, DEF_ST_6500_STABLE_TIME + 1000);
 		else
-			msleep(DEF_ST_STABLE_TIME);
+			usleep_range(DEF_ST_STABLE_TIME, DEF_ST_STABLE_TIME + 1000);
 	}
 
 	/* enable FIFO reading */
@@ -999,7 +999,7 @@ static int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
 		result = inv_i2c_single_write(st, reg->fifo_en, d);
 		if (result)
 			return result;
-		mdelay(DEF_GYRO_WAIT_TIME);
+		usleep_range(DEF_GYRO_WAIT_TIME, DEF_GYRO_WAIT_TIME + 1000);
 		result = inv_i2c_single_write(st, reg->fifo_en, 0);
 		if (result)
 			return result;
@@ -1074,7 +1074,7 @@ static void inv_recover_setting(struct inv_mpu_state *st)
 	data = ONE_K_HZ/st->chip_config.fifo_rate - 1;
 	inv_i2c_single_write(st, reg->sample_rate_div, data);
 	/* wait for the sampling rate change to stabilize */
-	mdelay(INV_MPU_SAMPLE_RATE_CHANGE_STABLE);
+	usleep_range(INV_MPU_SAMPLE_RATE_CHANGE_STABLE, INV_MPU_SAMPLE_RATE_CHANGE_STABLE + 1000);
 	if (INV_ITG3500 != st->chip_type) {
 		inv_i2c_single_write(st, reg->accel_config,
 				     (st->chip_config.accel_fs <<
@@ -2081,7 +2081,7 @@ static int inv_dry_run_dmp(struct inv_mpu_state *st)
 	result = inv_i2c_single_write(st, reg->user_ctrl, BIT_DMP_EN);
 	if (result)
 		return result;
-	msleep(10);
+	usleep_range(10000, 11000);
 	result = inv_i2c_single_write(st, reg->user_ctrl, 0);
 	if (result)
 		return result;

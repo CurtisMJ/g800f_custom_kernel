@@ -448,8 +448,6 @@ static void __exynos_sysmmu_set_pbuf_ver31(struct sysmmu_drvdata *drvdata,
 
 	BUG_ON(num_bufs > 2);
 
-	__sysmmu_tlb_invalidate(drvdata->sfrbases[idx]);
-
 	if (num_bufs == 2) {
 		/* Separate PB mode */
 		cfg |= 2 << 28;
@@ -471,6 +469,8 @@ static void __exynos_sysmmu_set_pbuf_ver31(struct sysmmu_drvdata *drvdata,
 		prefbuf[0].size = 1;
 	__sysmmu_set_prefbuf(drvdata->sfrbases[idx] + pbuf_offset[1],
 				prefbuf[0].base, prefbuf[0].size, 0);
+
+	__sysmmu_tlb_invalidate(drvdata->sfrbases[idx]);
 }
 
 static void __exynos_sysmmu_set_pbuf_ver32(struct sysmmu_drvdata *drvdata,
@@ -485,8 +485,6 @@ static void __exynos_sysmmu_set_pbuf_ver32(struct sysmmu_drvdata *drvdata,
 	num_bufs = __prepare_prefetch_buffers(drvdata, idx, prefbuf, 3);
 	if (num_bufs == 0)
 		return;
-
-	__sysmmu_tlb_invalidate(drvdata->sfrbases[idx]);
 
 	cfg |= 7 << 16; /* enabling PB0 ~ PB2 */
 
@@ -517,6 +515,8 @@ static void __exynos_sysmmu_set_pbuf_ver32(struct sysmmu_drvdata *drvdata,
 	}
 
 	__raw_writel(cfg, drvdata->sfrbases[idx] + REG_MMU_CFG);
+
+	__sysmmu_tlb_invalidate(drvdata->sfrbases[idx]);
 }
 
 static unsigned int find_lmm_preset(unsigned int num_pb, unsigned int num_bufs)

@@ -18,6 +18,7 @@
  */
 
 #include <linux/vfs61xx_platform.h>
+#include "fingerprint.h"
 #include "vfs61xx.h"
 #ifdef CONFIG_OF
 #include <linux/of_gpio.h>
@@ -112,6 +113,7 @@ struct vfsspi_devData {
 	bool tz_mode;
 	struct pinctrl *p;
 	unsigned int irqpincon;
+	int sensortype;
 };
 
 struct vfsspi_devData *g_data;
@@ -125,8 +127,6 @@ struct vfsspi_devData *g_data;
 /* The coefficient which is multiplying with value retrieved from the
  * VFSSPI_IOCTL_SET_CLK IOCTL command for getting the final baud rate. */
 #define BAUD_RATE_COEF  1000
-
-#define VFSSPI_DEBUG_TIMER_SEC	(10 * HZ)
 
 #define DRDY_IRQ_ENABLE	1
 #define DRDY_IRQ_DISABLE	0
@@ -1445,79 +1445,66 @@ void vfsspi_platformUninit(struct vfsspi_devData *vfsSpiDev)
 }
 
 #ifdef CONFIG_SENSORS_FINGERPRINT_SYSFS
-static ssize_t vfsspi_ocp_check_show(struct device *dev,
+static ssize_t vfsspi_type_check_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct vfsspi_devData *data = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", data->ocp_state);
+	return snprintf(buf, PAGE_SIZE, "%d\n", data->sensortype);
 }
-
-static ssize_t vfsspi_ocp_check_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t vfsspi_vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
-	struct vfsspi_devData *data = dev_get_drvdata(dev);
-
-	if (sysfs_streq(buf, "1"))
-		data->ocp_state = 1;
-	else if (sysfs_streq(buf, "0"))
-		data->ocp_state = 0;
-	pr_info("%s: data->ocp_state = %d\n",
-		__func__, data->ocp_state);
-	if (data->ocp_state)
-		vfsspi_regulator_onoff(data, false);
-
-	return size;
+	return sprintf(buf, "%s\n", VENDOR);
 }
 
-static DEVICE_ATTR(ocp_check, S_IRUGO | S_IWUSR | S_IWGRP,
-	vfsspi_ocp_check_show, vfsspi_ocp_check_store);
+static ssize_t vfsspi_name_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%s\n", CHIP_ID);
+}
+
+static DEVICE_ATTR(type_check, S_IRUGO,
+	vfsspi_type_check_show, NULL);
+static DEVICE_ATTR(vendor, S_IRUGO,
+	vfsspi_vendor_show, NULL);
+static DEVICE_ATTR(name, S_IRUGO,
+	vfsspi_name_show, NULL);
 
 static struct device_attribute *fp_attrs[] = {
-	&dev_attr_ocp_check,
+	&dev_attr_type_check,
+	&dev_attr_vendor,
+	&dev_attr_name,
 	NULL,
 };
 #endif
 
 static void vfsspi_work_func_debug(struct work_struct *work)
 {
-	if (g_data->ocp_pin)
-		pr_info("%s ocp state: %d, ocp pin: %d\n"
-			"%s ldo pin 3.3v: %d, ldo pin 1.8v: %d, sleep pin: %d, tz_mode: %d\n",
-			__func__, g_data->ocp_state,
-			gpio_get_value(g_data->ocp_pin),
-			__func__,
-			gpio_get_value(g_data->ldo_pin_33v),
-			gpio_get_value(g_data->ldo_pin_18v),
+	u8 ldo_value = 0;
+	ldo_value = (gpio_get_value(g_data->ldo_pin_33v) << 1 )
+				| gpio_get_value(g_data->ldo_pin_18v);
+
+	if (g_data->ocp_en)
+		pr_info("%s r ocpen: %d, ldo: %d,"
+			" sleep: %d, tz: %d, type: %s\n",
+			__func__, gpio_get_value(g_data->ocp_en),
+			ldo_value, gpio_get_value(g_data->sleepPin),
+			g_data->tz_mode,
+			sensor_status[g_data->sensortype + 1]);
+	else
+		pr_info("%s r ldo: %d,"
+			" sleep: %d, tz: %d, type: %s\n",
+			__func__, ldo_value,
 			gpio_get_value(g_data->sleepPin),
-			g_data->tz_mode);
-	else {
-		if (g_data->ocp_en)
-			pr_info("%s ocp state: %d, ocp en: %d\n"
-				"%s ldo pin 3.3v: %d, ldo pin 1.8v: %d, sleep pin: %d, tz_mode: %d\n",
-				__func__, g_data->ocp_state,
-				gpio_get_value(g_data->ocp_en),
-				__func__,
-				gpio_get_value(g_data->ldo_pin_33v),
-				gpio_get_value(g_data->ldo_pin_18v),
-				gpio_get_value(g_data->sleepPin),
-				g_data->tz_mode);
-		else
-			pr_info("%s ocp state: %d\n"
-				"%s ldo pin 3.3v: %d, ldo pin 1.8v: %d, sleep pin: %d, tz_mode: %d\n",
-				__func__, g_data->ocp_state,
-				__func__,
-				gpio_get_value(g_data->ldo_pin_33v),
-				gpio_get_value(g_data->ldo_pin_18v),
-				gpio_get_value(g_data->sleepPin),
-				g_data->tz_mode);
-	}
+			g_data->tz_mode,
+			sensor_status[g_data->sensortype + 1]);
 }
 
 static void vfsspi_enable_debug_timer(void)
 {
 	mod_timer(&g_data->dbg_timer,
-		round_jiffies_up(jiffies + VFSSPI_DEBUG_TIMER_SEC));
+		round_jiffies_up(jiffies + FPSENSOR_DEBUG_TIMER_SEC));
 }
 
 static void vfsspi_disable_debug_timer(void)
@@ -1530,7 +1517,7 @@ static void vfsspi_timer_func(unsigned long ptr)
 {
 	queue_work(g_data->wq_dbg, &g_data->work_debug);
 	mod_timer(&g_data->dbg_timer,
-		round_jiffies_up(jiffies + VFSSPI_DEBUG_TIMER_SEC));
+		round_jiffies_up(jiffies + FPSENSOR_DEBUG_TIMER_SEC));
 }
 
 #undef TEST_DEBUG
@@ -1577,6 +1564,7 @@ int vfsspi_probe(struct spi_device *spi)
 		vfsSpiDev->tz_mode = true;
 #endif
 	}
+	vfsSpiDev->sensortype = SENSOR_RAPTOR;
 
 	/* Initialize driver data. */
 	vfsSpiDev->curSpiSpeed = SLOW_BAUD_RATE;

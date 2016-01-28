@@ -14,6 +14,10 @@
 #include "sensors_axes.h"
 #include <linux/input.h>
 
+#define TIME_LO_MASK 0x00000000FFFFFFFF
+#define TIME_HI_MASK 0xFFFFFFFF00000000
+#define TIME_HI_SHIFT 32
+
 extern struct device *sensors_classdev_register(char *sensors_name);
 extern void sensors_classdev_unregister(struct device *dev);
 extern int sensors_register(struct device *dev,

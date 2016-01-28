@@ -514,7 +514,6 @@ static ssize_t proximity_enable_store(struct device *dev,
 	mutex_lock(&cm36686->power_lock);
 	pr_info("%s, new_value = %d\n", __func__, new_value);
 	if (new_value && !(cm36686->power_state & PROXIMITY_ENABLED)) {
-		u8 val = 1;
 		int i;
 		int err = 0;
 
@@ -541,10 +540,10 @@ static ssize_t proximity_enable_store(struct device *dev,
 				ps_reg_init_setting[i][CMD]);
 		}
 
-		val = gpio_get_value(cm36686->pdata->irq);
+		/*val = gpio_get_value(cm36686->pdata->irq);*/
 		/* 0 is close, 1 is far */
 		input_report_abs(cm36686->proximity_input_dev,
-			ABS_DISTANCE, val);
+			ABS_DISTANCE, 1);
 		input_sync(cm36686->proximity_input_dev);
 
 		enable_irq(cm36686->irq);

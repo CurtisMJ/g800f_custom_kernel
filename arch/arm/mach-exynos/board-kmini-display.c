@@ -218,11 +218,12 @@ static int lcd_power_on(struct lcd_device *ld, int enable)
 		msleep(10);
 		regulator_enable(regulator_vlcd_3v0);
 	}else {
-		regulator_disable(regulator_vlcd_3v0);
-		regulator_disable(regulator_vlcd_1v8);
 		/*LCD RESET low at SLEEP*/
 		gpio_request_one(EXYNOS4_GPX2(4),GPIOF_OUT_INIT_LOW, "GPX2");
 		gpio_free(EXYNOS4_GPX2(4));
+
+		regulator_disable(regulator_vlcd_3v0);
+		regulator_disable(regulator_vlcd_1v8);
 	}
 	regulator_put(regulator_vlcd_3v0);
 	regulator_put(regulator_vlcd_1v8);
@@ -328,7 +329,7 @@ static struct lcd_platform_data panel_pdata = {
 	.reset = reset_lcd,
 	.power_on = lcd_power_on,
 	.reset_delay = 10000,
-	.power_on_delay = 1000,
+	.power_on_delay = 10000,
 };
 
 #ifdef CONFIG_FB_MIPI_DSIM

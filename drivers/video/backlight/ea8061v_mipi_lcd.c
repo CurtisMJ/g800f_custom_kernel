@@ -740,7 +740,7 @@ static int init_hbm_parameter(struct lcd_info *lcd, const u8 *mtp_data, const u8
 	return 0;
 
 }
-
+int auto_br_count_first = 0;
 static int update_brightness(struct lcd_info *lcd, u8 force)
 {
 	u32 brightness;
@@ -748,10 +748,16 @@ static int update_brightness(struct lcd_info *lcd, u8 force)
 	mutex_lock(&lcd->bl_lock);
 
 	brightness = lcd->bd->props.brightness;
+	
+	/* Apply HBM after Max brightness*/
+	if(brightness == lcd->bd->props.max_brightness) 
+		auto_br_count_first ++;
+	else
+		auto_br_count_first = 0;
 
 	lcd->bl = get_backlight_level_from_brightness(brightness);
 
-	if (LEVEL_IS_HBM(lcd->auto_brightness) && (brightness == lcd->bd->props.max_brightness))
+	if (LEVEL_IS_HBM(lcd->auto_brightness) && (brightness == lcd->bd->props.max_brightness) && (auto_br_count_first !=1))
 		lcd->bl = GAMMA_HBM;
 
 	if ((force) || ((lcd->ldi_enable) && (lcd->current_bl != lcd->bl))) {

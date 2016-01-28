@@ -716,6 +716,12 @@ static int fimc_is_sensor_notify_by_fstr(struct fimc_is_device_sensor *device, v
 	device->fcount = *(u32 *)arg;
 	framemgr = GET_DST_FRAMEMGR(device->vctx);
 
+	if (device->instant_cnt) {
+		device->instant_cnt--;
+		if (device->instant_cnt == 0)
+			wake_up(&device->instant_wait);
+	}
+
 	framemgr_e_barrier(framemgr, 0);
 
 	fimc_is_frame_process_head(framemgr, &frame);
@@ -768,7 +774,6 @@ static int fimc_is_sensor_notify_by_fend(struct fimc_is_device_sensor *device, v
 {
 	int ret = 0;
 	struct fimc_is_frame *frame;
-	struct fimc_is_group *group_3aa;
 
 	BUG_ON(!device);
 	BUG_ON(!device->vctx);
@@ -782,23 +787,6 @@ static int fimc_is_sensor_notify_by_fend(struct fimc_is_device_sensor *device, v
 	if (device->force_stop)
 		fimc_is_sensor_dtp((unsigned)device);
 #endif
-
-	if (device->instant_cnt) {
-		if (IS_ISCHAIN_OTF(device->ischain)) {
-			group_3aa = &device->ischain->group_3aa;
-
-			if (((atomic_read(&group_3aa->sensor_fcount) - group_3aa->async_shots) >= device->instant_cnt)
-				&& (atomic_read(&group_3aa->scount) >= device->instant_cnt)) {
-
-				device->instant_cnt = 0;
-				wake_up(&device->instant_wait);
-			}
-		} else {
-			device->instant_cnt--;
-			if (device->instant_cnt == 0)
-				wake_up(&device->instant_wait);
-		}
-	}
 
 	frame = (struct fimc_is_frame *)arg;
 	if (frame) {
@@ -854,6 +842,13 @@ static void fimc_is_sensor_instanton(struct work_struct *data)
 	clear_bit(FIMC_IS_SENSOR_FRONT_DTP_STOP, &device->state);
 	clear_bit(FIMC_IS_SENSOR_BACK_NOWAIT_STOP, &device->state);
 
+	ret = fimc_is_sensor_start(device);
+	if (ret) {
+		merr("fimc_is_sensor_start is fail(%d)\n", device, ret);
+		goto p_err;
+	}
+	set_bit(FIMC_IS_SENSOR_FRONT_START, &device->state);
+
 #ifdef ENABLE_DTP
 	if (device->dtp_check) {
 		setup_timer(&device->dtp_timer, fimc_is_sensor_dtp, (unsigned long)device);
@@ -861,13 +856,6 @@ static void fimc_is_sensor_instanton(struct work_struct *data)
 		info("DTP checking...\n");
 	}
 #endif
-
-	ret = fimc_is_sensor_start(device);
-	if (ret) {
-		merr("fimc_is_sensor_start is fail(%d)\n", device, ret);
-		goto p_err;
-	}
-	set_bit(FIMC_IS_SENSOR_FRONT_START, &device->state);
 
 	if (instant_cnt) {
 		u32 timetowait, timetoelapse, timeout;
@@ -1808,27 +1796,27 @@ int fimc_is_sensor_buffer_queue(struct fimc_is_device_sensor *device,
 	if (index >= FRAMEMGR_MAX_REQUEST) {
 		err("index(%d) is invalid", index);
 		ret = -EINVAL;
-		goto exit;
+		goto p_err;
 	}
 
 	framemgr = &device->vctx->q_dst.framemgr;
 	if (framemgr == NULL) {
 		err("framemgr is null\n");
 		ret = EINVAL;
-		goto exit;
+		goto p_err;
 	}
 
 	frame = &framemgr->frame[index];
 	if (frame == NULL) {
 		err("frame is null\n");
 		ret = EINVAL;
-		goto exit;
+		goto p_err;
 	}
 
-	if (unlikely(frame->memory == FRAME_UNI_MEM)) {
+	if (unlikely(!test_bit(FRAME_INI_MEM, &frame->memory))) {
 		err("frame %d is NOT init", index);
 		ret = EINVAL;
-		goto exit;
+		goto p_err;
 	}
 
 	framemgr_e_barrier_irqs(framemgr, FMGR_IDX_2 + index, flags);
@@ -1842,7 +1830,7 @@ int fimc_is_sensor_buffer_queue(struct fimc_is_device_sensor *device,
 
 	framemgr_x_barrier_irqr(framemgr, FMGR_IDX_2 + index, flags);
 
-exit:
+p_err:
 	return ret;
 }
 
@@ -2063,6 +2051,7 @@ p_err:
 int fimc_is_sensor_gpio_off_softlanding(struct fimc_is_device_sensor *device)
 {
 	int ret = 0;
+	int ret_val = 0;
 	struct exynos_platform_fimc_is_sensor *pdata;
 
 	BUG_ON(!device);
@@ -2091,6 +2080,16 @@ int fimc_is_sensor_gpio_off_softlanding(struct fimc_is_device_sensor *device)
 	clear_bit(FIMC_IS_SENSOR_GPIO_ON, &device->state);
 
 p_err:
+	/* GSCL internal clock off */
+	ret_val = fimc_is_sensor_iclk_off(device);
+	if (ret_val)
+		mwarn("fimc_is_sensor_iclk_off is fail(%d)", device, ret_val);
+
+	/* Sensor clock on */
+	ret_val = fimc_is_sensor_mclk_off(device);
+	if (ret_val)
+		mwarn("fimc_is_sensor_mclk_off is fail(%d)", device, ret_val);
+
 	return ret;
 }
 
@@ -2145,17 +2144,17 @@ int fimc_is_sensor_runtime_suspend(struct device *dev)
 		ret = fimc_is_sensor_gpio_off(device);
 		if (ret)
 			mwarn("fimc_is_sensor_gpio_off is fail(%d)", device, ret);
+
+		/* GSCL internal clock off */
+		ret = fimc_is_sensor_iclk_off(device);
+		if (ret)
+			mwarn("fimc_is_sensor_iclk_off is fail(%d)", device, ret);
+
+		/* Sensor clock on */
+		ret = fimc_is_sensor_mclk_off(device);
+		if (ret)
+			mwarn("fimc_is_sensor_mclk_off is fail(%d)", device, ret);
 	}
-
-	/* GSCL internal clock off */
-	ret = fimc_is_sensor_iclk_off(device);
-	if (ret)
-		mwarn("fimc_is_sensor_iclk_off is fail(%d)", device, ret);
-
-	/* Sensor clock on */
-	ret = fimc_is_sensor_mclk_off(device);
-	if (ret)
-		mwarn("fimc_is_sensor_mclk_off is fail(%d)", device, ret);
 
 	ret = v4l2_subdev_call(subdev_csi, core, s_power, 0);
 	if (ret)

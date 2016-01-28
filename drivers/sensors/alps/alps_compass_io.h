@@ -29,6 +29,10 @@
 #define ALPSIO_ACT_SELF_TEST_B   _IOR(ALPSIO, 4, int)
 #define ALPSIO_REOPT_VAL         _IOW(ALPSIO, 5, int)
 
+enum {
+	SENSOR_MS_DELAY_FASTEST = 10,	/* 10msec */
+	SENSOR_MS_DELAY_NORMAL = 200,	/* 200msec */
+};
 extern int accsns_get_acceleration_data(int *xyz);
 extern int hscd_get_magnetic_field_data(int *xyz);
 extern void hscd_activate(int flgatm, int flg, int dtime);

@@ -41,7 +41,7 @@
 #include <linux/swap.h>
 #include <linux/rcupdate.h>
 #include <linux/notifier.h>
-
+#include <linux/delay.h>
 #define LMK_COUNT_READ
 
 #ifdef LMK_COUNT_READ
@@ -72,6 +72,11 @@ static unsigned long lowmem_deathpending_timeout;
 			pr_info(x);			\
 	} while (0)
 
+#if defined(CONFIG_ZSWAP)
+extern atomic_t zswap_pool_pages;
+extern atomic_t zswap_stored_pages;
+#endif
+
 static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 {
 	struct task_struct *tsk;
@@ -87,7 +92,10 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int other_free = global_page_state(NR_FREE_PAGES);
 	int other_file = global_page_state(NR_FILE_PAGES) -
 			global_page_state(NR_SHMEM) - total_swapcache_pages;
-
+	struct reclaim_state *reclaim_state = current->reclaim_state;
+#if defined(CONFIG_ZSWAP)
+	int stored_pages = atomic_read(&zswap_stored_pages);
+#endif
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
 	if (lowmem_minfree_size < array_size)
@@ -130,6 +138,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		    time_before_eq(jiffies, lowmem_deathpending_timeout)) {
 			task_unlock(p);
 			rcu_read_unlock();
+			/* give the system time to free up the memory */
+			msleep_interruptible(20);
 			return 0;
 		}
 		oom_score_adj = p->signal->oom_score_adj;
@@ -138,6 +148,14 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			continue;
 		}
 		tasksize = get_mm_rss(p->mm);
+#if defined(CONFIG_ZSWAP)
+		if (stored_pages) {
+			lowmem_print(3, "shown tasksize : %d\n", tasksize);
+			tasksize += atomic_read(&zswap_pool_pages) * get_mm_counter(p->mm, MM_SWAPENTS)
+				/ stored_pages;
+			lowmem_print(3, "real tasksize : %d\n", tasksize);
+		}
+#endif
 		task_unlock(p);
 		if (tasksize <= 0)
 			continue;
@@ -171,13 +189,20 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
+		rcu_read_unlock();
 #ifdef LMK_COUNT_READ
 		lmk_count++;
 #endif
+		/* give the system time to free up the memory */
+		msleep_interruptible(20);
+
+		if(reclaim_state)
+			reclaim_state->reclaimed_slab += selected_tasksize;
+	} else {
+		rcu_read_unlock();
 	}
 	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
 		     sc->nr_to_scan, sc->gfp_mask, rem);
-	rcu_read_unlock();
 	return rem;
 }
 

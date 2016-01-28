@@ -490,7 +490,7 @@ static void fimc_is_group_cancel(struct fimc_is_group *group,
 #ifdef CONFIG_USE_VENDER_FEATURE
 
 #ifdef CONFIG_FLED_RT5033_EXT_GPIO
-int rt55033_gpio_flash_lock(bool lock);
+int rt5033_gpio_flash_lock(bool lock);
 int rt5033_flash_force_enable(int enable);
 void rt5033_dump_reg(void);
 
@@ -531,7 +531,7 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 #ifdef CONFIG_FLED_RT5033_EXT_GPIO
 			flash_mode[group->instance] = 1;
 			rt5033_flash_force_enable(true);
-			rt55033_gpio_flash_lock(true);
+			rt5033_gpio_flash_lock(true);
 #endif
 			break;
 		case AA_FLASHMODE_OFF: /*OFF mode*/
@@ -544,7 +544,6 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 				rt5033_dump_reg();
 				break;
 			case 1: /* Main flash */
-				rt55033_gpio_flash_lock(false);
 				rt5033_dump_reg();
 				break;
 			default:
@@ -1386,7 +1385,7 @@ int fimc_is_group_buffer_queue(struct fimc_is_groupmgr *groupmgr,
 		goto p_err;
 	}
 
-	if (unlikely(frame->memory == FRAME_UNI_MEM)) {
+	if (unlikely(!test_bit(FRAME_INI_MEM, &frame->memory))) {
 		err("frame %d is NOT init", index);
 		ret = EINVAL;
 		goto p_err;
@@ -1462,11 +1461,10 @@ int fimc_is_group_buffer_queue(struct fimc_is_groupmgr *groupmgr,
 
 	framemgr_x_barrier_irqr(framemgr, index, flags);
 
-	if (unlikely(frame->memory == FRAME_INI_MEM) &&
-		!test_bit(FIMC_IS_SENSOR_FRONT_START, &sensor->state)) {
-		fimc_is_itf_map(device, GROUP_ID(group->id),
-			frame->dvaddr_shot, frame->shot_size);
-		frame->memory = FRAME_MAP_MEM;
+	if (unlikely(!test_bit(FRAME_MAP_MEM, &frame->memory) &&
+		!test_bit(FIMC_IS_SENSOR_FRONT_START, &sensor->state))) {
+		fimc_is_itf_map(device, GROUP_ID(group->id), frame->dvaddr_shot, frame->shot_size);
+		set_bit(FRAME_MAP_MEM, &frame->memory);
 	}
 
 	fimc_is_group_start_trigger(groupmgr, group, frame);

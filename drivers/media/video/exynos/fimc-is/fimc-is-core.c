@@ -53,6 +53,7 @@
 #include "fimc-is-fan53555.h"
 #endif
 #include "sensor/fimc-is-device-2p2.h"
+//#include "sensor/fimc-is-device-2p2_12m.h" //Temporary
 #include "sensor/fimc-is-device-3h5.h"
 #include "sensor/fimc-is-device-3h7.h"
 #include "sensor/fimc-is-device-3h7_sunny.h"
@@ -655,8 +656,8 @@ static void __fimc_is_fault_handler(struct device *dev)
 		if (test_bit(FIMC_IS_SENSOR_OPEN, &sensor->state)) {
 			framemgr = &sensor->vctx->q_dst.framemgr;
 			for (i = 0; i < FRAMEMGR_MAX_REQUEST; ++i) {
-				pr_err("LITE0 BUF[%d][0] = %d, 0x%08X, 0x%08X\n", i,
-					framemgr->frame[i].memory,
+				pr_err("LITE0 BUF[%d][0] = %X, 0x%08X, 0x%08X\n", i,
+					(u32)framemgr->frame[i].memory,
 					framemgr->frame[i].dvaddr_buffer[0],
 					framemgr->frame[i].kvaddr_buffer[0]);
 			}
@@ -667,8 +668,8 @@ static void __fimc_is_fault_handler(struct device *dev)
 		if (test_bit(FIMC_IS_SENSOR_OPEN, &sensor->state)) {
 			framemgr = &sensor->vctx->q_dst.framemgr;
 			for (i = 0; i < FRAMEMGR_MAX_REQUEST; ++i) {
-				pr_err("LITE1 BUF[%d][0] = %d, 0x%08X. 0x%08X\n", i,
-					framemgr->frame[i].memory,
+				pr_err("LITE1 BUF[%d][0] = %X, 0x%08X. 0x%08X\n", i,
+					(u32)framemgr->frame[i].memory,
 					framemgr->frame[i].dvaddr_buffer[0],
 					framemgr->frame[i].kvaddr_buffer[0]);
 			}
@@ -683,9 +684,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->group_3aa.leader.vctx->q_src.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[3AA:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[3AA:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -696,9 +697,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->taac.leader->vctx->q_dst.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[3AAC:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[3AAC:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -709,9 +710,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->taap.leader->vctx->q_dst.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[3AAP:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[3AAP:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -722,9 +723,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->group_isp.leader.vctx->q_src.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[ISP:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[ISP:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -735,9 +736,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->scc.vctx->q_dst.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[SCC:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[SCC:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -748,9 +749,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->dis.vctx->q_dst.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[VDC:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[VDC:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -761,9 +762,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->group_dis.leader.vctx->q_src.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[VDO:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[VDO:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -774,9 +775,9 @@ static void __fimc_is_fault_handler(struct device *dev)
 					framemgr = &ischain->scp.vctx->q_dst.framemgr;
 					for (j = 0; j < framemgr->frame_cnt; ++j) {
 						for (k = 0; k < framemgr->frame[j].planes; k++) {
-							pr_err("[SCP:%d] BUF[%d][%d] = %d, 0x%08X, 0x%08X\n",
+							pr_err("[SCP:%d] BUF[%d][%d] = %X, 0x%08X, 0x%08X\n",
 								i, j, k,
-								framemgr->frame[j].memory,
+								(u32)framemgr->frame[j].memory,
 								framemgr->frame[j].dvaddr_buffer[k],
 								framemgr->frame[j].kvaddr_buffer[k]);
 						}
@@ -1135,6 +1136,14 @@ static int fimc_is_probe(struct platform_device *pdev)
 	}
 #endif
 
+#if defined(CONFIG_CAMERA_SENSOR_2P2_12M_OBJ)
+	ret = sensor_2p2_12m_probe(NULL, NULL);
+	if (ret) {
+		err("sensor_2p2_12m_probe is fail(%d)", ret);
+		goto p_err3;
+	}
+#endif
+
 #if defined(CONFIG_CAMERA_SENSOR_3H5_OBJ)
 	ret = sensor_3h5_probe(NULL, NULL);
 	if (ret) {
@@ -1317,7 +1326,7 @@ static int fimc_is_probe(struct platform_device *pdev)
 				dev_attr_front_camfw.attr.name);
 		}
 	}
-	camera_rear_dev = device_create(camera_class, NULL, 0, NULL, "rear");
+	camera_rear_dev = device_create(camera_class, NULL, 1, NULL, "rear");
 	if (IS_ERR(camera_rear_dev)) {
 		printk(KERN_ERR "failed to create rear device!\n");
 	} else {
@@ -1458,8 +1467,11 @@ static int fimc_is_remove(struct platform_device *pdev)
 	}
 
 	if (camera_class) {
-		device_destroy(camera_class, 0);
-		device_destroy(camera_class, 1);
+		if (camera_front_dev)
+			device_destroy(camera_class, camera_front_dev->devt);
+
+		if (camera_rear_dev)
+			device_destroy(camera_class, camera_rear_dev->devt);
 	}
 
 	class_destroy(camera_class);

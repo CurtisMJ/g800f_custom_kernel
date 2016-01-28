@@ -73,14 +73,14 @@
 #define BIT_XG_FIFO_EN		0x40
 #define BIT_YG_FIFO_EN		0x20
 #define BIT_ZG_FIFO_EN		0x10
-#define GYRO_WAIT_TIME		GYRO_PACKET_THRESH
+#define GYRO_WAIT_TIME		50000
 #define GYRO_THRESH		3
 #define THREE_AXIS		3
 
 /* HW self test */
 #define BYTES_PER_SENSOR	6
-#define DEF_ST_STABLE_TIME	200
-#define DEF_GYRO_WAIT_TIME	51
+#define DEF_ST_STABLE_TIME	200000
+#define DEF_GYRO_WAIT_TIME	55000
 #define DEF_ST_PRECISION	1000
 #define BITS_ACCEL_OUT		0x08
 #define BITS_GYRO_OUT		0x70
@@ -518,8 +518,7 @@ int mpu6500_selftest_run(struct inv_mpu_state *st,
 	}
 
 	// Wait time
-//	msleep(GYRO_WAIT_TIME);
-	mdelay(200);
+	usleep_range(200000, 201000);
 
 	// Enable FIFO
 	result = inv_i2c_single_write(st, MPUREG_USER_CTRL, BIT_FIFO_EN);
@@ -532,7 +531,7 @@ int mpu6500_selftest_run(struct inv_mpu_state *st,
 	  return result;
 
 	// Wait time
-	mdelay(GYRO_WAIT_TIME);
+	usleep_range(GYRO_WAIT_TIME, GYRO_WAIT_TIME + 1000);
 
 
 	// Stop gyro FIFO
@@ -681,7 +680,7 @@ static int mpu6500_do_powerup(struct inv_mpu_state *st)
 
 	inv_i2c_single_write(st, MPUREG_PWR_MGMT_1, 0x1);
 
-	mdelay(20);
+	usleep_range(20000, 21000);
 
 	inv_i2c_read(st, MPUREG_PWR_MGMT_2, 1, &reg);
 
@@ -739,7 +738,7 @@ static int mpu6500_do_test(struct inv_mpu_state *st, int self_test_flag,
 		return result;
 
 	/* wait for the output to get stable */
-	mdelay(DEF_ST_STABLE_TIME);
+	usleep_range(DEF_ST_STABLE_TIME, DEF_ST_STABLE_TIME + 1000);
 
 	/* enable FIFO reading */
 	result = inv_i2c_single_write(st,
@@ -764,7 +763,7 @@ static int mpu6500_do_test(struct inv_mpu_state *st, int self_test_flag,
 	s = 0;
 
 	while (s < INIT_SELFTEST_SAMPLES) {
-		mdelay(DEF_GYRO_WAIT_TIME);
+		usleep_range(DEF_GYRO_WAIT_TIME, DEF_GYRO_WAIT_TIME + 1000);
 		/* stop sending data to FIFO */
 		result = inv_i2c_single_write(st, MPUREG_FIFO_EN, 0);
 		if (result)

@@ -136,7 +136,7 @@ struct ion_heap_ops {
 #define ION_FLUSH_ALL_LOWLIMIT	SZ_256K
 
 /* [INTERNAL USE ONLY] threshold value for outer cache flush */
-#define OUTER_FLUSH_ALL_SIZE	SZ_1M
+#define OUTER_FLUSH_ALL_SIZE	SZ_256K
 
 /**
  * heap flags - flags between the heaps and core ion code

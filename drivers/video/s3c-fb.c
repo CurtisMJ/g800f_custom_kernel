@@ -135,6 +135,9 @@ static struct pm_qos_request exynos5_fimd_mif_qos;
 
 struct s3c_fb;
 
+static u32 s3c_fb_rgborder(int format);
+static u32 s3c_fb_get_pixel_format(struct fb_var_screeninfo *var);
+
 #ifdef CONFIG_ION_EXYNOS
 extern struct ion_device *ion_exynos;
 #endif
@@ -225,9 +228,9 @@ static int s3c_fb_check_var(struct fb_var_screeninfo *var,
 	case 8:
 		if (sfb->variant.palette[win->index] != 0) {
 			/* non palletised, A:1,R:2,G:3,B:2 mode */
-			var->red.offset		= 4;
+			var->red.offset		= 0;
 			var->green.offset	= 2;
-			var->blue.offset	= 0;
+			var->blue.offset	= 4;
 			var->red.length		= 5;
 			var->green.length	= 3;
 			var->blue.length	= 2;
@@ -249,9 +252,9 @@ static int s3c_fb_check_var(struct fb_var_screeninfo *var,
 		var->bits_per_pixel	= 32;
 
 		/* 666 format */
-		var->red.offset		= 12;
+		var->red.offset		= 0;
 		var->green.offset	= 6;
-		var->blue.offset	= 0;
+		var->blue.offset	= 12;
 		var->red.length		= 6;
 		var->green.length	= 6;
 		var->blue.length	= 6;
@@ -259,9 +262,9 @@ static int s3c_fb_check_var(struct fb_var_screeninfo *var,
 
 	case 16:
 		/* 16 bpp, 565 format */
-		var->red.offset		= 11;
+		var->red.offset		= 0;
 		var->green.offset	= 5;
-		var->blue.offset	= 0;
+		var->blue.offset	= 11;
 		var->red.length		= 5;
 		var->green.length	= 6;
 		var->blue.length	= 5;
@@ -276,11 +279,11 @@ static int s3c_fb_check_var(struct fb_var_screeninfo *var,
 	case 24:
 		/* our 24bpp is unpacked, so 32bpp */
 		var->bits_per_pixel	= 32;
-		var->red.offset		= 16;
+		var->red.offset		= 0;
 		var->red.length		= 8;
 		var->green.offset	= 8;
 		var->green.length	= 8;
-		var->blue.offset	= 0;
+		var->blue.offset	= 16;
 		var->blue.length	= 8;
 		break;
 
@@ -737,6 +740,7 @@ static int s3c_fb_set_par(struct fb_info *info)
 	int win_no = win->index;
 	u32 data;
 	int old_wincon;
+	int format;
 
 	dev_dbg(sfb->dev, "setting framebuffer parameters\n");
 
@@ -799,6 +803,9 @@ static int s3c_fb_set_par(struct fb_info *info)
 	data = vidw_alpha(win->variant.has_osd_alpha, 0xff, 0xff, 0xff);
 	writel(data, regs + VIDW_ALPHA1(win_no));
 
+	format = s3c_fb_get_pixel_format(var);
+	data = s3c_fb_rgborder(format);
+	writel(data, regs + WIN_RGB_ORDER(win_no));
 	/* preserve whether window was enabled */
 	data = old_wincon & WINCONx_ENWIN;
 
@@ -1573,6 +1580,40 @@ static void s3c_fb_free_dma_buf(struct s3c_fb *sfb,
 	dma_buf_put(dma->dma_buf);
 	ion_free(sfb->fb_ion_client, dma->ion_handle);
 	memset(dma, 0, sizeof(struct s3c_dma_buf_data));
+}
+
+static u32 s3c_fb_get_pixel_format(struct fb_var_screeninfo *var)
+{
+	u32 format = S3C_FB_PIXEL_FORMAT_RGBA_8888;
+
+	switch (var->bits_per_pixel) {
+	case 16:
+		if (var->red.offset == 0) {
+			if (var->transp.length == 1)
+				format = S3C_FB_PIXEL_FORMAT_RGBA_5551;
+			else
+				format = S3C_FB_PIXEL_FORMAT_RGB_565;
+		}
+		break;
+	case 32:
+		if (var->red.offset == 0) {
+			if (var->transp.length == 0)
+				format = S3C_FB_PIXEL_FORMAT_RGBX_8888;
+			else
+				format = S3C_FB_PIXEL_FORMAT_RGBA_8888;
+		}
+		else {
+			if (var->transp.length == 0)
+				format = S3C_FB_PIXEL_FORMAT_BGRX_8888;
+			else
+				format = S3C_FB_PIXEL_FORMAT_BGRA_8888;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return format;
 }
 
 static u32 s3c_fb_red_length(int format)

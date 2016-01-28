@@ -156,8 +156,8 @@ int fimc_is_subdev_buffer_queue(struct fimc_is_subdev *subdev,
 		goto p_err;
 	}
 
-	if (unlikely(frame->memory == FRAME_UNI_MEM)) {
-		merr("frame %d is NOT init", vctx, index);
+	if (unlikely(!test_bit(FRAME_INI_MEM, &frame->memory))) {
+		err("frame %d is NOT init", index);
 		ret = EINVAL;
 		goto p_err;
 	}

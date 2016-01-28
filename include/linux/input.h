@@ -189,7 +189,7 @@ struct input_keymap_entry {
 #define EV_FF_STATUS		0x17
 #ifdef CONFIG_VT_TKEY_SKIP_MATCH
 #define EV_TOUCHKEY		0x18
-#endif 
+#endif
 #define EV_MAX			0x1f
 #define EV_CNT			(EV_MAX+1)
 
@@ -842,14 +842,12 @@ struct input_keymap_entry {
 #define ABS_MT_PRESSURE		0x3a	/* Pressure on contact area */
 #define ABS_MT_DISTANCE		0x3b	/* Contact hover distance */
 #define ABS_MT_ANGLE		0x3c	/* touch angle */
-#define ABS_MT_PALM		0x3d	/* palm touch */
-#define ABS_MT_COMPONENT	0x3e	/* touch component */
-#define ABS_MT_SUMSIZE		0x3f	/* touch sumsize */
-
+#define ABS_MT_PALM		0x3e	/* palm touch */
+#define ABS_MT_GRIP		0x3f	/* grip touch */
 #ifdef __KERNEL__
 /* Implementation details, userspace should not care about these */
 #define ABS_MT_FIRST		ABS_MT_TOUCH_MAJOR
-#define ABS_MT_LAST		ABS_MT_SUMSIZE
+#define ABS_MT_LAST		ABS_MT_GRIP
 #endif
 
 #define ABS_MAX			0x3f

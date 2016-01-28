@@ -216,7 +216,9 @@ static inline bool is_manager(struct i2s_dai *i2s)
 
 static inline struct clk *get_opclk(struct i2s_dai *i2s, int clk_id)
 {
-	struct s3c_audio_pdata *i2s_pdata = i2s->pdev->dev.platform_data;
+	struct platform_device *pri_pdev = i2s->pri_dai ?
+					i2s->pri_dai->pdev : i2s->pdev;
+	struct s3c_audio_pdata *i2s_pdata = pri_pdev->dev.platform_data;
 	const char *src_clk_name = i2s_pdata->type.i2s.src_clk[clk_id];
 
 	if ((i2s->pdev->id == 0) || (i2s->pdev->id == SAMSUNG_I2S_SECOFF))
