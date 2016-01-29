@@ -9050,21 +9050,10 @@ static const u16 sr352_capture_VGA[]=
 0x03c8,	//AWB Off
 0x1052,
 
-0x03c1,
-0x1006, // ssd tranfer disable
-0xff01, 
-
-0x0300,
-0x0101,	// Sleep on
-
-0x03c1,
-0x1007, // ssd tranfer enable
-
 0x03c0,
 0x7f00,	// DMA off
 0x7e01,	// DMA set
-0xff0c,//delay 120ms
-
+0xff0c,	// 120ms
 
 ///////////////////////////////////////////
 // D9 Page(Capture function)
@@ -9095,7 +9084,7 @@ static const u16 sr352_capture_VGA[]=
 0x0311,
 0x101F,	//Bit[4]=Hi
 0x0312,
-0x709F,	//Bit[0]=Hi
+0x70bF,	//Bit[0]=Hi
 
 ///////////////////////////////////////////
 //  Windowing
@@ -9105,7 +9094,61 @@ static const u16 sr352_capture_VGA[]=
 0x2108,
 0x2200,
 0x2301,
+///////////////////////////////////////////
+//  Scaler Off
+///////////////////////////////////////////
+0x0319,
+0x1000, //hw scaler off
 
+//Scaler
+0x03c0,
+0xa000, //fw scaler off
+
+///////////////////////////////////////////
+// 05 Page MIPI Size
+///////////////////////////////////////////
+0x0305,  // Page05
+0x3010,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
+0x3100,  // l_pkt_wc_l
+
+//------------------------------------------------//
+//TAP Capture Setting
+//------------------------------------------------//
+0x03c0,
+0x9800,
+0x9910,
+0x9a72,
+0x9bf0,		// exp_band_100 * 2
+0x9c00,
+0x9d0d,
+0x9eb2,
+0x9f40,		// exp_band_120 * 2
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6400,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+
+0xff01, //delay 10ms
+
+0x0300,
+0x1e01, // frame update
+
+0x0326,
+0x3029,	// Capture On
+
+0x0300,
+0x0100,	// sleep off
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6492,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+//------------------------------------------------//
 ///////////////////////////////////////////
 //  Scaler 640_480
 ///////////////////////////////////////////
@@ -9136,43 +9179,9 @@ static const u16 sr352_capture_VGA[]=
 0x3005,  // l_pkt_wc_h  // Full = 640 * 2 (YUV)
 0x3100,  // l_pkt_wc_l
 
-//------------------------------------------------//
-//TAP Capture Setting
-//------------------------------------------------//
-0x03c0,
-0x9800,
-0x9910,
-0x9a72,
-0x9bf0,		// exp_band_100 * 2
-0x9c00,
-0x9d0d,
-0x9eb2,
-0x9f40,		// exp_band_120 * 2
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6400,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
-
-0xff01,//delay 10ms
-
 0x0300,
 0x1e01, // frame update
-
-0x0326,
-0x3029,	// Capture On
-
-0x0300,
-0x0100,	// sleep off
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6492,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
+0x0100,
 };
 
 static const u16 sr352_capture_1280_720[]=
@@ -9181,21 +9190,10 @@ static const u16 sr352_capture_1280_720[]=
 0x03c8,	//AWB Off
 0x1052,
 
-0x03c1,
-0x1006, // ssd tranfer disable
-0xff01, 
-
-0x0300,
-0x0101,	// Sleep on
-
-0x03c1,
-0x1007, // ssd tranfer enable
-
 0x03c0,
 0x7f00,	// DMA off
 0x7e01,	// DMA set
-0xff0c,//delay 120ms
-
+0xff0c,	// 120ms
 
 ///////////////////////////////////////////
 // D9 Page(Capture function)
@@ -9226,7 +9224,7 @@ static const u16 sr352_capture_1280_720[]=
 0x0311,
 0x101F,	//Bit[4]=Hi
 0x0312,
-0x709F,	//Bit[0]=Hi
+0x70bF,	//Bit[0]=Hi
 
 ///////////////////////////////////////////
 //  Windowing
@@ -9236,35 +9234,21 @@ static const u16 sr352_capture_1280_720[]=
 0x2108,
 0x2200,
 0x2301,
-
 ///////////////////////////////////////////
-//  Scaler 1280_720
+//  Scaler Off
 ///////////////////////////////////////////
 0x0319,
 0x1000, //hw scaler off
-0x1403, //sawtooth on
 
 //Scaler
 0x03c0,
 0xa000, //fw scaler off
-0xa205, //scale wid
-0xa300,
-0xa402, //scale hgt
-0xa5d0,
-0xa601,	//fw scaler col start
-0xa706, //fw scaler row start
-
-0xa100, //zoom step
-0xa0c0, //fw scaler on
-
-0x0319,
-0x1007, //hw scaler on
 
 ///////////////////////////////////////////
 // 05 Page MIPI Size
 ///////////////////////////////////////////
 0x0305,  // Page05
-0x300a,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
+0x3010,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
 0x3100,  // l_pkt_wc_l
 
 //------------------------------------------------//
@@ -9287,7 +9271,7 @@ static const u16 sr352_capture_1280_720[]=
 0x03c0,
 0x6601,	// jump custom call
 
-0xff01,//delay 10ms
+0xff01, //delay 10ms
 
 0x0300,
 0x1e01, // frame update
@@ -9304,6 +9288,40 @@ static const u16 sr352_capture_1280_720[]=
 
 0x03c0,
 0x6601,	// jump custom call
+//------------------------------------------------//
+///////////////////////////////////////////
+//  Scaler 1280_720
+///////////////////////////////////////////
+0x0319,
+0x1000, //hw scaler off
+0x1403, //sawtooth on
+
+//Scaler
+0x03c0,
+0xa000, //fw scaler off
+0xa205, //scale wid
+0xa300,
+0xa402, //scale hgt
+0xa5d0,
+0xa602,	//fw scaler col start
+0xa706, //fw scaler row start
+
+0xa100, //zoom step
+0xa0c0, //fw scaler on
+
+0x0319,
+0x1007, //hw scaler on
+
+///////////////////////////////////////////
+// 05 Page MIPI Size
+///////////////////////////////////////////
+0x0305,  // Page05
+0x300a,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
+0x3100,  // l_pkt_wc_l
+
+0x0300,
+0x1e01, // frame update
+0x0100,
 };
 static const u16 sr352_capture_1600_1200[]=
 {
@@ -9311,21 +9329,10 @@ static const u16 sr352_capture_1600_1200[]=
 0x03c8,	//AWB Off
 0x1052,
 
-0x03c1,
-0x1006, // ssd tranfer disable
-0xff01, 
-
-0x0300,
-0x0101,	// Sleep on
-
-0x03c1,
-0x1007, // ssd tranfer enable
-
 0x03c0,
 0x7f00,	// DMA off
 0x7e01,	// DMA set
-0xff0c,//delay 120ms
-
+0xff0c,	// 120ms
 
 ///////////////////////////////////////////
 // D9 Page(Capture function)
@@ -9356,7 +9363,7 @@ static const u16 sr352_capture_1600_1200[]=
 0x0311,
 0x101F,	//Bit[4]=Hi
 0x0312,
-0x709F,	//Bit[0]=Hi
+0x70bF,	//Bit[0]=Hi
 
 ///////////////////////////////////////////
 //  Windowing
@@ -9366,7 +9373,61 @@ static const u16 sr352_capture_1600_1200[]=
 0x2108,
 0x2200,
 0x2301,
+///////////////////////////////////////////
+//  Scaler Off
+///////////////////////////////////////////
+0x0319,
+0x1000, //hw scaler off
 
+//Scaler
+0x03c0,
+0xa000, //fw scaler off
+
+///////////////////////////////////////////
+// 05 Page MIPI Size
+///////////////////////////////////////////
+0x0305,  // Page05
+0x3010,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
+0x3100,  // l_pkt_wc_l
+
+//------------------------------------------------//
+//TAP Capture Setting
+//------------------------------------------------//
+0x03c0,
+0x9800,
+0x9910,
+0x9a72,
+0x9bf0,		// exp_band_100 * 2
+0x9c00,
+0x9d0d,
+0x9eb2,
+0x9f40,		// exp_band_120 * 2
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6400,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+
+0xff01, //delay 10ms
+
+0x0300,
+0x1e01, // frame update
+
+0x0326,
+0x3029,	// Capture On
+
+0x0300,
+0x0100,	// sleep off
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6492,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+//------------------------------------------------//
 ///////////////////////////////////////////
 //  Scaler 1600_1200
 ///////////////////////////////////////////
@@ -9397,43 +9458,9 @@ static const u16 sr352_capture_1600_1200[]=
 0x300c,  // l_pkt_wc_h  // Full = 1600 * 2 (YUV)
 0x3180,  // l_pkt_wc_l
 
-//------------------------------------------------//
-//TAP Capture Setting
-//------------------------------------------------//
-0x03c0,
-0x9800,
-0x9910,
-0x9a72,
-0x9bf0,		// exp_band_100 * 2
-0x9c00,
-0x9d0d,
-0x9eb2,
-0x9f40,		// exp_band_120 * 2
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6400,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
-
-0xff01,//delay 10ms
-
 0x0300,
 0x1e01, // frame update
-
-0x0326,
-0x3029,	// Capture On
-
-0x0300,
-0x0100,	// sleep off
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6492,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
+0x0100,
 };
 
 /* DSLIM: Not Used */
@@ -9443,21 +9470,10 @@ static const u16 sr352_capture_W2M[]=
 0x03c8,	//AWB Off
 0x1052,
 
-0x03c1,
-0x1006, // ssd tranfer disable
-0xff01, 
-
-0x0300,
-0x0101,	// Sleep on
-
-0x03c1,
-0x1007, // ssd tranfer enable
-
 0x03c0,
 0x7f00,	// DMA off
 0x7e01,	// DMA set
-0xff0c,//delay 120ms
-
+0xff0c,	// 120ms
 
 ///////////////////////////////////////////
 // D9 Page(Capture function)
@@ -9488,7 +9504,7 @@ static const u16 sr352_capture_W2M[]=
 0x0311,
 0x101F,	//Bit[4]=Hi
 0x0312,
-0x709F,	//Bit[0]=Hi
+0x70bF,	//Bit[0]=Hi
 
 ///////////////////////////////////////////
 //  Windowing
@@ -9498,6 +9514,61 @@ static const u16 sr352_capture_W2M[]=
 0x2108,
 0x2200,
 0x2301,
+///////////////////////////////////////////
+//  Scaler Off
+///////////////////////////////////////////
+0x0319,
+0x1000, //hw scaler off
+
+//Scaler
+0x03c0,
+0xa000, //fw scaler off
+
+///////////////////////////////////////////
+// 05 Page MIPI Size
+///////////////////////////////////////////
+0x0305,  // Page05
+0x3010,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
+0x3100,  // l_pkt_wc_l
+
+//------------------------------------------------//
+//TAP Capture Setting
+//------------------------------------------------//
+0x03c0,
+0x9800,
+0x9910,
+0x9a72,
+0x9bf0,		// exp_band_100 * 2
+0x9c00,
+0x9d0d,
+0x9eb2,
+0x9f40,		// exp_band_120 * 2
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6400,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+
+0xff01, //delay 10ms
+
+0x0300,
+0x1e01, // frame update
+
+0x0326,
+0x3029,	// Capture On
+
+0x0300,
+0x0100,	// sleep off
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6492,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+//------------------------------------------------//
 ///////////////////////////////////////////
 //  Scaler 2048_1152
 ///////////////////////////////////////////
@@ -9528,67 +9599,22 @@ static const u16 sr352_capture_W2M[]=
 0x3010,  // l_pkt_wc_h  // Full = 2048 * 2 (YUV)
 0x3100,  // l_pkt_wc_l
 
-//------------------------------------------------//
-//TAP Capture Setting
-//------------------------------------------------//
-0x03c0,
-0x9800,
-0x9910,
-0x9a72,
-0x9bf0,		// exp_band_100 * 2
-0x9c00,
-0x9d0d,
-0x9eb2,
-0x9f40,		// exp_band_120 * 2
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6400,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
-
-0xff01,//delay 10ms
-
 0x0300,
 0x1e01, // frame update
-
-0x0326,
-0x3029,	// Capture On
-
-0x0300,
-0x0100,	// sleep off
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6492,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
-
+0x0100,
 };
 
 /* DSLIM: Not Used */
 static const u16 sr352_capture_3M[]=
 {
+
 0x03c8,	//AWB Off
 0x1052,
-
-0x03c1,
-0x1006, // ssd tranfer disable
-0xff01, 
-
-0x0300,
-0x0101,	// Sleep on
-
-0x03c1,
-0x1007, // ssd tranfer enable
 
 0x03c0,
 0x7f00,	// DMA off
 0x7e01,	// DMA set
-0xff0c,//delay 120ms
-
+0xff0c,	// 120ms
 
 ///////////////////////////////////////////
 // D9 Page(Capture function)
@@ -9619,8 +9645,71 @@ static const u16 sr352_capture_3M[]=
 0x0311,
 0x101F,	//Bit[4]=Hi
 0x0312,
-0x709F,	//Bit[0]=Hi
+0x70bF,	//Bit[0]=Hi
 
+///////////////////////////////////////////
+//  Windowing
+///////////////////////////////////////////
+0x0300,
+0x2000,
+0x2108,
+0x2200,
+0x2301,
+///////////////////////////////////////////
+//  Scaler Off
+///////////////////////////////////////////
+0x0319,
+0x1000, //hw scaler off
+
+//Scaler
+0x03c0,
+0xa000, //fw scaler off
+
+///////////////////////////////////////////
+// 05 Page MIPI Size
+///////////////////////////////////////////
+0x0305,  // Page05
+0x3010,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
+0x3100,  // l_pkt_wc_l
+
+//------------------------------------------------//
+//TAP Capture Setting
+//------------------------------------------------//
+0x03c0,
+0x9800,
+0x9910,
+0x9a72,
+0x9bf0,		// exp_band_100 * 2
+0x9c00,
+0x9d0d,
+0x9eb2,
+0x9f40,		// exp_band_120 * 2
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6400,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+
+0xff01, //delay 10ms
+
+0x0300,
+0x1e01, // frame update
+
+0x0326,
+0x3029,	// Capture On
+
+0x0300,
+0x0100,	// sleep off
+
+0x0326,
+0x63f8,		// set custom call address (high)
+0x6492,		// set custom call address (low)
+
+0x03c0,
+0x6601,	// jump custom call
+//------------------------------------------------//
 ///////////////////////////////////////////
 //  Windowing
 ///////////////////////////////////////////
@@ -9644,46 +9733,12 @@ static const u16 sr352_capture_3M[]=
 // 05 Page MIPI Size
 ///////////////////////////////////////////
 0x0305,  // Page05
-0x3010,  // l_pkt_wc_h  // Full = 2048 * 2 (YUV)
+0x3010,  // l_pkt_wc_h  // Full = 1280 * 2 (YUV)
 0x3100,  // l_pkt_wc_l
-
-//------------------------------------------------//
-//TAP Capture Setting
-//------------------------------------------------//
-0x03c0,
-0x9800,
-0x9910,
-0x9a72,
-0x9bf0,		// exp_band_100 * 2
-0x9c00,
-0x9d0d,
-0x9eb2,
-0x9f40,		// exp_band_120 * 2
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6400,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
-
-0xff01,//delay 10ms
 
 0x0300,
 0x1e01, // frame update
-
-0x0326,
-0x3029,	// Capture On
-
-0x0300,
-0x0100,	// sleep off
-
-0x0326,
-0x63f8,		// set custom call address (high)
-0x6492,		// set custom call address (low)
-
-0x03c0,
-0x6601,	// jump custom call
+0x0100,
 };
 
 static const u16 sr352_cam_HD[] = {

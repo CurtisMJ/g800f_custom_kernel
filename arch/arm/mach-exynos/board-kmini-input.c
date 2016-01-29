@@ -234,9 +234,9 @@ static bool abov_keyled_enabled;
 #define ABOV_TK_FW_CHECKSUM_L 0x50
 
 /* use FPCB 0.3 from hw rev0.2 board*/
-#define ABOV_TK_FW_VERSION_02 0x15
-#define ABOV_TK_FW_CHECKSUM_H_02 0xB6
-#define ABOV_TK_FW_CHECKSUM_L_02 0xCE
+#define ABOV_TK_FW_VERSION_02 0x13
+#define ABOV_TK_FW_CHECKSUM_H_02 0x06
+#define ABOV_TK_FW_CHECKSUM_L_02 0x16
 
 #define ABOV_TK_FW_NAME "abov/abov_tk.fw"
 #define ABOV_TK_FW_NAME_02 "abov/abov_tk_r02.fw"

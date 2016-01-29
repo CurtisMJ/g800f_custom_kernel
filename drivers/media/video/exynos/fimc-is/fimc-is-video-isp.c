@@ -457,6 +457,7 @@ static int fimc_is_isp_video_s_input(struct file *file, void *priv,
 	unsigned int input)
 {
 	int ret = 0;
+	u32 dindex;
 	u32 flag;
 	u32 group_id;
 	u32 module, ssx_vindex, tax_vindex, rep_stream;
@@ -534,7 +535,32 @@ static int fimc_is_isp_video_s_input(struct file *file, void *priv,
 
 	/* 3. checking reprocessing stream */
 	if (rep_stream) {
-		flag = REPROCESSING_FLAG;
+		for (dindex = 0; dindex < FIMC_IS_MAX_NODES; ++dindex) {
+			temp = &core->ischain[dindex];
+
+			if (temp == device)
+				continue;
+
+			if (!test_bit(FIMC_IS_ISCHAIN_OPEN, &temp->state))
+				continue;
+
+			if (temp->module == module) {
+				flag = REPROCESSING_FLAG | dindex;
+				break;
+			}
+
+#ifdef DEBUG
+			info("device.module(%08X) != ischain[%d].module(%08X)\n", module,
+				dindex, temp->module);
+#endif
+		}
+
+		if (dindex >= FIMC_IS_MAX_NODES) {
+			merr("preview stream can NOT be found", vctx);
+			ret = -EINVAL;
+			goto p_err;
+		}
+
 		set_bit(FIMC_IS_ISCHAIN_REPROCESSING, &device->state);
 	} else {
 		/* connect to sensor if it's not a reprocessing stream */
@@ -545,9 +571,6 @@ static int fimc_is_isp_video_s_input(struct file *file, void *priv,
 	/* 4. init variable */
 	device->instance_sensor = sensor->instance;
 	device->sensor = sensor;
-
-	info("%s(%s) : module(%d), flag(%08X), group_id(%d)\n", __func__,
-			(rep_stream ? "Reprocessing" : "Preview"), module, flag, group_id);
 
 	/* 5. init ischain */
 	ret = fimc_is_ischain_init(device, module, group_id, tax_vindex, flag);
@@ -584,21 +607,6 @@ static int fimc_is_isp_video_s_ctrl(struct file *file, void *priv,
 		i2c_clk = I2C_L1;
 
 	switch (ctrl->id) {
-	case V4L2_CID_IS_DEBUG_DUMP:
-		info("Print fimc-is info dump by HAL");
-		if (device != NULL) {
-			fimc_is_hw_logdump(device->interface);
-			fimc_is_hw_regdump(device->interface);
-			CALL_POPS(device, print_clk, device->pdev);
-		}
-		if (ctrl->value) {
-			err("BUG_ON from HAL");
-			BUG();
-		}
-		break;
-	case V4L2_CID_IS_DEBUG_SYNC_LOG:
-		fimc_is_logsync(device->interface, ctrl->value, IS_MSG_TEST_SYNC_LOG);
-		break;
 	case V4L2_CID_IS_G_CAPABILITY:
 		ret = fimc_is_ischain_g_capability(device, ctrl->value);
 		dbg_isp("V4L2_CID_IS_G_CAPABILITY : %X\n", ctrl->value);
@@ -642,7 +650,6 @@ static int fimc_is_isp_video_s_ctrl(struct file *file, void *priv,
 			ret = -EINVAL;
 		} else {
 			device->setfile = ctrl->value;
-			minfo("[ISP:V] setfile: 0x%08X\n", vctx, ctrl->value);
 		}
 		break;
 	case V4L2_CID_IS_COLOR_RANGE:
@@ -651,158 +658,11 @@ static int fimc_is_isp_video_s_ctrl(struct file *file, void *priv,
 					ctrl->value);
 			ret = -EINVAL;
 		} else {
-			device->color_range &= ~FIMC_IS_ISP_CRANGE_MASK;
+			device->setfile &= ~FIMC_IS_ISP_CRANGE_MASK;
 
 			if (ctrl->value)
-				device->color_range	|=
+				device->setfile	|=
 					(FIMC_IS_CRANGE_LIMITED << FIMC_IS_ISP_CRANGE_SHIFT);
-		}
-		break;
-	case V4L2_CID_IS_MAP_BUFFER:
-		{
-			struct fimc_is_queue *queue;
-			struct fimc_is_framemgr *framemgr;
-			struct fimc_is_frame *frame;
-			struct dma_buf *dmabuf;
-			struct dma_buf_attachment *attachment;
-			dma_addr_t dva;
-			struct v4l2_buffer *buf;
-			struct v4l2_plane *planes;
-			size_t size;
-			u32 write, plane, group_id;
-
-			size = sizeof(struct v4l2_buffer);
-			buf = kmalloc(size, GFP_KERNEL);
-			if (!buf) {
-				merr("kmalloc is fail", vctx);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			ret = copy_from_user(buf, (void __user *)ctrl->value, size);
-			if (ret) {
-				merr("copy_from_user is fail(%d)", vctx, ret);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			if (!V4L2_TYPE_IS_MULTIPLANAR(buf->type)) {
-				merr("single plane is not supported", vctx);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			if (buf->index >= FRAMEMGR_MAX_REQUEST) {
-				merr("buffer index is invalid(%d)", vctx, buf->index);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			if (buf->length > VIDEO_MAX_PLANES) {
-				merr("planes[%d] is invalid", vctx, buf->length);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			queue = GET_QUEUE(vctx, buf->type);
-			if (queue->vbq->memory != V4L2_MEMORY_DMABUF) {
-				merr("memory type(%d) is not supported", vctx, queue->vbq->memory);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			size = sizeof(struct v4l2_plane) * buf->length;
-			planes = kmalloc(size, GFP_KERNEL);
-			if (IS_ERR(planes)) {
-				merr("kmalloc is fail(%p)", vctx, planes);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			ret = copy_from_user(planes, (void __user *)buf->m.planes, size);
-			if (ret) {
-				merr("copy_from_user is fail(%d)", vctx, ret);
-				kfree(planes);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			framemgr = &queue->framemgr;
-			frame = &framemgr->frame[buf->index];
-			if (test_bit(FRAME_MAP_MEM, &frame->memory)) {
-				merr("this buffer(%d) is already mapped", vctx, buf->index);
-				kfree(planes);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			/* only last buffer need to map */
-			if (buf->length >= 1) {
-				plane = buf->length - 1;
-			} else {
-				merr("buffer length is not correct(%d)", vctx, buf->length);
-				kfree(planes);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			dmabuf = dma_buf_get(planes[plane].m.fd);
-			if (IS_ERR(dmabuf)) {
-				merr("dma_buf_get is fail(%p)", vctx, dmabuf);
-				kfree(planes);
-				kfree(buf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			attachment = dma_buf_attach(dmabuf, &device->pdev->dev);
-			if (IS_ERR(attachment)) {
-				merr("dma_buf_attach is fail(%p)", vctx, attachment);
-				kfree(planes);
-				kfree(buf);
-				dma_buf_put(dmabuf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			write = !V4L2_TYPE_IS_OUTPUT(buf->type);
-			dva = ion_iovmm_map(attachment, 0, dmabuf->size, write, plane);
-			if (IS_ERR_VALUE(dva)) {
-				merr("ion_iovmm_map is fail(%X)", vctx, dva);
-				kfree(planes);
-				kfree(buf);
-				dma_buf_detach(dmabuf, attachment);
-				dma_buf_put(dmabuf);
-				ret = -EINVAL;
-				goto p_err;
-			}
-
-			group_id = GROUP_ID(device->group_isp.id);
-			ret = fimc_is_itf_map(device, group_id, dva, dmabuf->size);
-			if (ret) {
-				merr("fimc_is_itf_map is fail(%d)", vctx, ret);
-				kfree(planes);
-				kfree(buf);
-				dma_buf_detach(dmabuf, attachment);
-				dma_buf_put(dmabuf);
-				goto p_err;
-			}
-
-			minfo("[ISP:V] buffer%d.plane%d mapping\n", vctx, buf->index, plane);
-			set_bit(FRAME_MAP_MEM, &frame->memory);
-			dma_buf_detach(dmabuf, attachment);
-			dma_buf_put(dmabuf);
-			kfree(planes);
-			kfree(buf);
 		}
 		break;
 	default:
@@ -811,7 +671,6 @@ static int fimc_is_isp_video_s_ctrl(struct file *file, void *priv,
 		break;
 	}
 
-p_err:
 	return ret;
 }
 

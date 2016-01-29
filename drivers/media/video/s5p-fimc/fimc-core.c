@@ -1120,6 +1120,7 @@ int fimc_runtime_resume(struct device *dev)
 	/* Enable clocks and perform basic initalization */
 	clk_enable(fimc->clock[CLK_GATE]);
 	fimc->vb2->resume(fimc->alloc_ctx);
+	fimc_hw_reset(fimc);
 
 	/* Resume the capture or mem-to-mem device */
 	if (fimc_capture_busy(fimc))
@@ -1180,6 +1181,7 @@ static int fimc_resume(struct device *dev)
 		spin_unlock_irqrestore(&fimc->slock, flags);
 		return 0;
 	}
+	fimc_hw_reset(fimc);
 	spin_unlock_irqrestore(&fimc->slock, flags);
 
 	if (fimc_capture_busy(fimc))

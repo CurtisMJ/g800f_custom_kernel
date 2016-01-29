@@ -34,8 +34,6 @@
 #define MC96FR116C_READ_LENGTH	8
 #define DUMMY			0xffff
 
-#define MC96FR116C_MODE_MICROSEC	0x40
-
 #define MC96FR116C_RESET_BOOTLOADER_MODE	0
 #define MC96FR116C_RESET_USER_IR_MODE		1
 
@@ -67,12 +65,11 @@ struct mc96fr116c_data {
 	u8 signal[MAX_SIZE];
 	int signal_length;
 	int carrier_freq;
+	int ir_sum;
 
 	int dev_id;
 	int mode;
 	bool last_send_ok;
-	
-	struct delayed_work conf_work;
 };
 
 static const u8 INITIAL_BOOT_MODE_DATA[MC96FR116C_READ_LENGTH] = {
@@ -499,6 +496,9 @@ static int mc96fr116c_send_signal(struct mc96fr116c_data *data)
 	int retry;
 	int ret;
 	bool send_checksum_ok = false;
+	int sleep_timing;
+	int end_data;
+	int emission_time;
 
 	dev_dbg(&client->dev, "%s: total buf_size: %d\n", __func__, buf_size);
 
@@ -535,6 +535,18 @@ static int mc96fr116c_send_signal(struct mc96fr116c_data *data)
 				__func__, retry);
 	}
 
+	end_data = data->signal[data->signal_length - 2] << 8
+		| data->signal[data->signal_length - 1];
+	emission_time = (1000 * (data->ir_sum - end_data)
+			/ (data->carrier_freq))
+		+ 10;
+	sleep_timing = emission_time - 130;
+	if (sleep_timing > 0)
+		msleep(sleep_timing);
+	emission_time = (1000 * (data->ir_sum) / (data->carrier_freq)) + 50;
+	if (emission_time > 0)
+		msleep(emission_time);
+
 	for (retry = 10; retry; msleep(100), retry--) {
 		if (data->pdata.ir_read_ready()) {
 			dev_dbg(&client->dev, "%s: ir_read_ready Okay\n",
@@ -566,6 +578,7 @@ static int mc96fr116c_send_signal(struct mc96fr116c_data *data)
 		data->pdata.ir_irled_onoff(0);
 	data->signal_length = 0;
 	data->carrier_freq = 0;
+	data->ir_sum = 0;
 
 	return ret;
 }
@@ -577,6 +590,7 @@ static ssize_t mc96fr1196c_ir_send_store(struct device *dev,
 	unsigned int value;
 	char *string, *pstring;
 	int signal_length = 2; /* By default, 2 bytes for data length */
+	int ir_sum = 0;
 	int number_freq = 0;
 	int ret;
 
@@ -612,26 +626,15 @@ static ssize_t mc96fr1196c_ir_send_store(struct device *dev,
 		}
 		if (signal_length == 2) {
 			data->carrier_freq = value;
-			data->signal[2] = MC96FR116C_MODE_MICROSEC;
-			data->signal[3] = (value >> 16) & 0xFF;
-			data->signal[4] = (value >> 8) & 0xFF;
-			data->signal[5] = value & 0xFF;
-			signal_length += 4;
+			data->signal[2] = (value >> 16) & 0xFF;
+			data->signal[3] = (value >> 8) & 0xFF;
+			data->signal[4] = value & 0xFF;
+			signal_length += 3;
 		} else {
-			if (value > 32767) {
-				data->signal[signal_length] = 0x80;
-				data->signal[signal_length + 1] =
-					(value >> 16) & 0xFF;
-				data->signal[signal_length + 2] =
-					(value >> 8) & 0xFF;
-				data->signal[signal_length + 3] = value & 0xFF;
-				signal_length += 4;
-			} else {
-				data->signal[signal_length] =
-					(value >> 8) & 0xFF;
-				data->signal[signal_length + 1] = value & 0xFF;
-				signal_length += 2;
-			}
+			ir_sum += value;
+			data->signal[signal_length] = (value >> 8) & 0xFF;
+			data->signal[signal_length + 1] = value & 0xFF;
+			signal_length += 2;
 			number_freq++;
 		}
 	}
@@ -670,52 +673,7 @@ static ssize_t device_id_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR(device_id, 0664, device_id_show, NULL);
 
-static void mc96fr116c_deffered_conf_work(struct work_struct *work)
-{
-	struct mc96fr116c_data *data = container_of(work,
-			struct mc96fr116c_data, conf_work.work);
-	int ret;
-
-	if (!data) {
-		pr_err("%s: No data on driver data\n", __func__);
-		return;
-	}
-
-	mutex_lock(&data->signal_mutex);
-	ret = mc96fr116c_check_need_fw_update(data);
-	if (ret) {
-		pr_info("%s: Need to update the firmware!", __func__);
-		ret = mc96fr116c_update_fw(data);
-	}
-	if (ret < 0) {
-		pr_err("%s: Error on loading fw.\n", __func__);
-		return;
-	}
-
-	if (data->mode == MC96FR116C_BOOTLOADER_MODE) {
-		ret = mc96fr116c_reset_sw(data, MC96FR116C_RESET_USER_IR_MODE);
-
-		if (ret < 0) {
-			ret = -ENODEV;
-			return;
-		}
-	}
-
-	mc96fr116c_read_device_id(data);
-
-	if (data->dev_id !=
-			(INITIAL_USER_IR_MODE_DATA[4] << BITS_PER_BYTE |
-			INITIAL_USER_IR_MODE_DATA[5])) {
-		dev_err(&data->client->dev, "%s: data->dev_id is %04X. It is not matched with %04X.\n",
-				__func__, data->dev_id,
-				(INITIAL_USER_IR_MODE_DATA[4] << BITS_PER_BYTE |
-				INITIAL_USER_IR_MODE_DATA[5]));
-		ret = -ENODEV;
-	}
-	mutex_unlock(&data->signal_mutex);
-}
-
-static int mc96fr116c_probe(struct i2c_client *client,
+static int __devinit mc96fr116c_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
@@ -750,17 +708,42 @@ static int mc96fr116c_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, data);
 
-	INIT_DELAYED_WORK_DEFERRABLE(&data->conf_work,
-			mc96fr116c_deffered_conf_work);
+	ret = mc96fr116c_check_need_fw_update(data);
+	if (ret) {
+		pr_info("%s: Need to update the firmware!", __func__);
+		ret = mc96fr116c_update_fw(data);
+	}
+	if (ret < 0)
+		goto err_remove_clientdata;
 
-	schedule_delayed_work(&data->conf_work, HZ);
-	
+	if (data->mode == MC96FR116C_BOOTLOADER_MODE) {
+		ret = mc96fr116c_reset_sw(data, MC96FR116C_RESET_USER_IR_MODE);
+
+		if (ret < 0) {
+			ret = -ENODEV;
+			goto err_remove_clientdata;
+		}
+	}
+
+	mc96fr116c_read_device_id(data);
+
+	if (data->dev_id !=
+			(INITIAL_USER_IR_MODE_DATA[4] << BITS_PER_BYTE |
+			INITIAL_USER_IR_MODE_DATA[5])) {
+		dev_err(&client->dev, "%s: data->dev_id is %04X. It is not matched with %04X.\n",
+				__func__, data->dev_id,
+				(INITIAL_USER_IR_MODE_DATA[4] << BITS_PER_BYTE |
+				INITIAL_USER_IR_MODE_DATA[5]));
+		ret = -ENODEV;
+		goto err_remove_clientdata;
+	}
+
 	pr_info("MC96FR116C IR Blaster, Abov semicondoctor Co., Ltd.\n");
 
 	mc96fr116c_dev = device_create(sec_class, NULL, 0, data, "sec_ir");
 
 	if (IS_ERR(mc96fr116c_dev))
-		dev_err(&client->dev, "Failed to create sec_ir device\n");
+		dev_err(&client->dev, "Failed to create mc96fr116c_dev device\n");
 
 	if (device_create_file(mc96fr116c_dev, &dev_attr_ir_send) < 0)
 		dev_err(&client->dev, "Failed to create device file(%s)!\n",
@@ -776,6 +759,9 @@ static int mc96fr116c_probe(struct i2c_client *client,
 
 	return 0;
 
+err_remove_clientdata:
+	i2c_set_clientdata(client, NULL);
+	mutex_destroy(&data->signal_mutex);
 err_free_mem:
 	kfree(data);
 	return ret;

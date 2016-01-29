@@ -3,7 +3,7 @@
  *     export functions to client drivers
  *     abstract OS and BUS specific details of SDIO
  *
- * Copyright (C) 1999-2015, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -23,7 +23,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh.h 455573 2014-02-14 17:49:31Z $
+ * $Id: bcmsdh.h 391577 2013-03-18 21:28:17Z $
  */
 
 /**
@@ -48,20 +48,16 @@ extern const uint bcmsdh_msglevel;
 typedef struct bcmsdh_info bcmsdh_info_t;
 typedef void (*bcmsdh_cb_fn_t)(void *);
 
-extern bcmsdh_info_t *bcmsdh_attach(osl_t *osh, void *sdioh, ulong *regsva);
-/**
- * BCMSDH API context
+extern struct device *pm_dev;
+
+/* Attach and build an interface to the underlying SD host driver.
+ *  - Allocates resources (structs, arrays, mem, OS handles, etc) needed by bcmsdh.
+ *  - Returns the bcmsdh handle and virtual address base for register access.
+ *    The returned handle should be used in all subsequent calls, but the bcmsh
+ *    implementation may maintain a single "default" handle (e.g. the first or
+ *    most recent one) to enable single-instance implementations to pass NULL.
  */
-struct bcmsdh_info
-{
-	bool	init_success;	/* underlying driver successfully attached */
-	void	*sdioh;		/* handler for sdioh */
-	uint32  vendevid;	/* Target Vendor and Device ID on SD bus */
-	osl_t   *osh;
-	bool	regfail;	/* Save status of last reg_read/reg_write call */
-	uint32	sbwad;		/* Save backplane window address */
-	void	*os_cxt;        /* Pointer to per-OS private data */
-};
+extern bcmsdh_info_t *bcmsdh_attach(osl_t *osh, void *cfghdl, void **regsva, uint irq);
 
 /* Detach - freeup resources allocated in attach */
 extern int bcmsdh_detach(osl_t *osh, void *sdh);
@@ -194,18 +190,16 @@ extern int bcmsdh_reset(bcmsdh_info_t *sdh);
 
 /* helper functions */
 
+extern void *bcmsdh_get_sdioh(bcmsdh_info_t *sdh);
+
 /* callback functions */
 typedef struct {
-	/* probe the device */
-	void *(*probe)(uint16 vend_id, uint16 dev_id, uint16 bus, uint16 slot,
+	/* attach to device */
+	void *(*attach)(uint16 vend_id, uint16 dev_id, uint16 bus, uint16 slot,
 	                uint16 func, uint bustype, void * regsva, osl_t * osh,
 	                void * param);
-	/* remove the device */
-	void (*remove)(void *context);
-	/* can we suspend now */
-	int (*suspend)(void *context);
-	/* resume from suspend */
-	int (*resume)(void *context);
+	/* detach from device */
+	void (*detach)(void *ch);
 } bcmsdh_driver_t;
 
 /* platform specific/high level functions */
@@ -217,18 +211,11 @@ extern void bcmsdh_device_remove(void * sdh);
 extern int bcmsdh_reg_sdio_notify(void* semaphore);
 extern void bcmsdh_unreg_sdio_notify(void);
 
-#if defined(OOB_INTR_ONLY) || defined(BCMSPI_ANDROID)
-extern int bcmsdh_oob_intr_register(bcmsdh_info_t *bcmsdh, bcmsdh_cb_fn_t oob_irq_handler,
-	void* oob_irq_handler_context);
-extern void bcmsdh_oob_intr_unregister(bcmsdh_info_t *sdh);
-extern void bcmsdh_oob_intr_set(bcmsdh_info_t *sdh, bool enable);
-#endif /* defined(OOB_INTR_ONLY) || defined(BCMSPI_ANDROID) */
-extern void bcmsdh_dev_pm_stay_awake(bcmsdh_info_t *sdh);
-extern void bcmsdh_dev_relax(bcmsdh_info_t *sdh);
-extern bool bcmsdh_dev_pm_enabled(bcmsdh_info_t *sdh);
-
-int bcmsdh_suspend(bcmsdh_info_t *bcmsdh);
-int bcmsdh_resume(bcmsdh_info_t *bcmsdh);
+#if defined(OOB_INTR_ONLY)
+extern int bcmsdh_register_oob_intr(void * dhdp);
+extern void bcmsdh_unregister_oob_intr(void);
+extern void bcmsdh_oob_intr_set(bool enable);
+#endif 
 
 /* Function to pass device-status bits to DHD. */
 extern uint32 bcmsdh_get_dstatus(void *sdh);
@@ -239,9 +226,6 @@ extern uint32 bcmsdh_cur_sbwad(void *sdh);
 /* Function to pass chipid and rev to lower layers for controlling pr's */
 extern void bcmsdh_chipinfo(void *sdh, uint32 chip, uint32 chiprev);
 
-#ifdef BCMSPI
-extern void bcmsdh_dwordmode(void *sdh, bool set);
-#endif /* BCMSPI */
 
 extern int bcmsdh_sleep(void *sdh, bool enab);
 

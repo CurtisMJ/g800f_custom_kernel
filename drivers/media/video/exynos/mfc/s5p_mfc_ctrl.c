@@ -116,6 +116,7 @@ int s5p_mfc_alloc_firmware(struct s5p_mfc_dev *dev)
 		return -EIO;
 	}
 
+	if (!dev->num_drm_inst) {
 		s5p_mfc_bitproc_virt =
 				s5p_mfc_mem_vaddr_priv(s5p_mfc_bitproc_buf);
 		mfc_debug(2, "Virtual address for FW: %08lx\n",
@@ -127,6 +128,7 @@ int s5p_mfc_alloc_firmware(struct s5p_mfc_dev *dev)
 			s5p_mfc_bitproc_buf = 0;
 			return -EIO;
 		}
+	}
 
 	dev->port_a = s5p_mfc_bitproc_phys;
 
@@ -510,9 +512,9 @@ int s5p_mfc_sleep(struct s5p_mfc_dev *dev)
 		return ret;
 	}
 
-	spin_lock_irq(&dev->condlock);
+	spin_lock(&dev->condlock);
 	set_bit(ctx->num, &dev->hw_lock);
-	spin_unlock_irq(&dev->condlock);
+	spin_unlock(&dev->condlock);
 
 	s5p_mfc_clock_on();
 	s5p_mfc_clean_dev_int_flags(dev);
@@ -554,9 +556,6 @@ int s5p_mfc_wakeup(struct s5p_mfc_dev *dev)
 		mfc_err("no mfc device to run\n");
 		return -EINVAL;
 	}
-
-	/* Set clock source again after wake up */
-	s5p_mfc_set_clock_parent(dev);
 
 	/* 0. MFC reset */
 	mfc_debug(2, "MFC reset...\n");

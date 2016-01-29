@@ -198,18 +198,3 @@ p_err:
 	info("[RSC] rsctype : %d, rsccount : %d\n", rsc_type, rsccount);
 	return ret;
 }
-
-int fimc_is_logsync(struct fimc_is_interface *itf, u32 sync_id, u32 msg_test_id)
-{
-	int ret = 0;
-
-	/* print kernel sync log */
-	log_sync(sync_id);
-
-#ifdef ENABLE_FW_SYNC_LOG
-	ret = fimc_is_hw_msg_test(itf, sync_id, msg_test_id);
-	if (ret)
-		err("fimc_is_hw_msg_test(%d)", ret);
-#endif
-	return ret;
-}

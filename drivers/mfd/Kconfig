@@ -889,23 +889,6 @@ config MFD_RT5033
 	  If you say yes to this option, support will be included for the
 	  RT5033 I/F PMIC chip.
 
-config MFD_RT5033_RESET_WA
-	bool "Enable RT5033 reset workaround"
-	depends on MFD_RT5033
-	default y
-	help
-	  If you enable this function, it will reset when RT5033 is invalid.
-
-config MFD_RT5033_RESET_GPIO
-	bool "Enable RT5033 GPIO reset"
-	depends on MFD_RT5033_RESET_WA
-	default n
-
-config MFD_RT5033_SLDO_VBUSDET
-	bool "SLDO uses for VBUS detection"
-	depends on MFD_RT5033
-	default n
-
 config MFD_RC5T583
 	bool "Ricoh RC5T583 Power Management system device"
 	depends on I2C=y && GENERIC_HARDIRQS

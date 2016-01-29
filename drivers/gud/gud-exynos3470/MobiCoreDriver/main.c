@@ -644,7 +644,8 @@ static int mc_fd_mmap(struct file *file, struct vm_area_struct *vmarea)
 {
 	struct mc_instance *instance = get_instance(file);
 	unsigned long len = vmarea->vm_end - vmarea->vm_start;
-	uint32_t handle = vmarea->vm_pgoff;
+	phys_addr_t paddr = (vmarea->vm_pgoff << PAGE_SHIFT);
+	unsigned int pfn;
 	struct mc_buffer *buffer = 0;
 	int ret = 0;
 
@@ -659,13 +660,13 @@ static int mc_fd_mmap(struct file *file, struct vm_area_struct *vmarea)
 		MCDRV_DBG_ERROR(mcd, "cannot allocate size 0");
 		return -ENOMEM;
 	}
-	if (handle) {
+	if (paddr) {
 		mutex_lock(&ctx.bufs_lock);
 
 		/* search for the buffer list. */
 		list_for_each_entry(buffer, &ctx.cont_bufs, list) {
 			/* Only allow mapping if the client owns it!*/
-			if (buffer->handle == handle &&
+			if (buffer->phys == paddr &&
 			    buffer->instance == instance) {
 				/* We shouldn't do remap with larger size */
 				if (buffer->len > len)
@@ -691,9 +692,9 @@ found:
 		 * of one region are possible. Now remap kernel address
 		 * space into user space
 		 */
-		ret = (int)remap_pfn_range(vmarea, vmarea->vm_start,
-				page_to_pfn(virt_to_page(buffer->addr)),
-				buffer->len, vmarea->vm_page_prot);
+		pfn = (unsigned int)paddr >> PAGE_SHIFT;
+		ret = (int)remap_pfn_range(vmarea, vmarea->vm_start, pfn,
+			buffer->len, vmarea->vm_page_prot);
 		/* If the remap failed then don't mark this buffer as marked
 		 * since the unmaping will also fail */
 		if (ret)
@@ -703,7 +704,8 @@ found:
 		if (!is_daemon(instance))
 			return -EPERM;
 
-		if (!ctx.mci_base.addr)
+		paddr = get_mci_base_phys(len);
+		if (!paddr)
 			return -EFAULT;
 
 		vmarea->vm_flags |= VM_IO;
@@ -714,9 +716,9 @@ found:
 		 * of one region are possible. Now remap kernel address
 		 * space into user space
 		 */
-		ret = (int)remap_pfn_range(vmarea, vmarea->vm_start,
-				page_to_pfn(virt_to_page(ctx.mci_base.addr)),
-				len, vmarea->vm_page_prot);
+		pfn = (unsigned int)paddr >> PAGE_SHIFT;
+		ret = (int)remap_pfn_range(vmarea, vmarea->vm_start, pfn, len,
+			vmarea->vm_page_prot);
 	}
 
 	MCDRV_DBG_VERBOSE(mcd, "exit with %d/0x%08X", ret, ret);
@@ -803,12 +805,7 @@ static long mc_fd_user_ioctl(struct file *file, unsigned int cmd,
 			return -EFAULT;
 
 		map.handle = buffer->handle;
-		/*
-		 * Trick: to keep the same interface with the user space, store
-		 * the handle in the physical address.
-		 * It is given back with the offset when mmap() is called.
-		 */
-		map.phys_addr = buffer->handle << PAGE_SHIFT;
+		map.phys_addr = buffer->phys;
 		map.reused = 0;
 		if (copy_to_user(uarg, &map, sizeof(map)))
 			ret = -EFAULT;

@@ -166,6 +166,7 @@ static void cyttsp5_final_sync(struct input_dev *input, int max_slots,
 	for (t = 0; t < max_slots; t++) {
 		if (test_bit(t, ids)) {
 			input_mt_slot(input, t);
+			input_report_abs(input, ABS_MT_SUMSIZE, sumsize);
 			input_report_abs(input, ABS_MT_PALM, palm);
 			continue;
 		}
@@ -1167,7 +1168,8 @@ static int cyttsp5_setup_input_device(struct device *dev)
 		min = 0, max = 1, 0, 0);
 	tsp_debug_dbg(true, dev, "%s: register signal=%02X min=%d max=%d\n",
 				__func__, signal, min, max);
-
+	input_set_abs_params(md->input, signal = ABS_MT_SUMSIZE,
+		min = 0, max = 255, 0, 0);
 	tsp_debug_dbg(true, dev, "%s: register signal=%02X min=%d max=%d\n",
 				__func__, signal, min, max);
 #endif

@@ -109,6 +109,8 @@ enum fimc_is_frame_output {
 };
 
 enum fimc_is_frame_mem {
+	/* uninitialized memory */
+	FRAME_UNI_MEM,
 	/* initialized memory */
 	FRAME_INI_MEM,
 	/* mapped memory */
@@ -139,7 +141,7 @@ struct fimc_is_frame {
 	u32			dvaddr_buffer[FIMC_IS_MAX_PLANES];
 
 	/* internal use */
-	unsigned long		memory;
+	enum fimc_is_frame_mem	memory;
 	u32			state;
 	u32			fcount;
 	u32			rcount;
@@ -179,8 +181,7 @@ struct fimc_is_framemgr {
 	u32			id;
 };
 
-int fimc_is_frame_probe(struct fimc_is_framemgr *this, u32 id);
-int fimc_is_frame_open(struct fimc_is_framemgr *this, u32 buffers);
+int fimc_is_frame_open(struct fimc_is_framemgr *this, u32 id, u32 buffers);
 int fimc_is_frame_close(struct fimc_is_framemgr *this);
 void fimc_is_frame_print_all(struct fimc_is_framemgr *this);
 

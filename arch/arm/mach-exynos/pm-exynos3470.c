@@ -173,7 +173,9 @@ static int exynos_cpu_suspend(unsigned long arg)
 {
 	unsigned int tmp;
 	unsigned int i;
+#if 0
 	int loops;
+#endif
 
 	if (soc_is_exynos3470()) {
 		/* Set clock source for PWI */
@@ -206,6 +208,7 @@ static int exynos_cpu_suspend(unsigned long arg)
 	for (i = 0; i < ARRAY_SIZE(exynos3470_rgton_before); i++)
 		pr_info("0x%08x : 0x%08x", (unsigned int)exynos3470_rgton_before[i].reg, __raw_readl(exynos3470_rgton_before[i].reg));
 
+#if 0
 	/* For W/A code for prevent A7hotplug in fail */
 	if (soc_is_exynos3470()) {
 		exynos_smc(SMC_CMD_REG, SMC_REG_ID_SFR_W(0x02020004), 0, 0);
@@ -230,6 +233,7 @@ static int exynos_cpu_suspend(unsigned long arg)
 			} while ((tmp & 0x3) != 0x3);
 		}
 	}
+#endif
 #ifdef CONFIG_ARM_TRUSTZONE
 	exynos_smc(SMC_CMD_SLEEP, 0, 0, 0);
 #else

@@ -84,6 +84,34 @@ extern int rt5033_chg_fled_init(struct i2c_client *client);
 #endif
 
 #ifdef CONFIG_VIDEO_EXYNOS_FIMC_IS
+static ssize_t flash_store(struct device *dev, struct device_attribute *attr,
+                         const char *buf, size_t count)
+{
+	if(*buf == '0') {
+		pr_info("%s: torch flash off\n", __func__);
+		gpio_request_one(GPIO_TORCH_EN, GPIOF_OUT_INIT_LOW, "FLASH_OUTPUT_LOW");
+		gpio_free(GPIO_TORCH_EN);
+
+		if(__gpio_get_value(GPIO_MAIN_CAM_RST)) {
+			pr_err("%s: torch flash off on running camera.(%d)!!\n", __func__,
+						__gpio_get_value(GPIO_MAIN_CAM_RST));
+			/* hand over the permission in order to handle the flash pins in the isp of camera. */
+			s3c_gpio_cfgpin(GPIO_TORCH_EN, (2 << 16));
+			s3c_gpio_setpull(GPIO_TORCH_EN, S3C_GPIO_PULL_NONE);
+			s3c_gpio_cfgpin(GPIO_FLASH_EN, (2 << 24));
+			s3c_gpio_setpull(GPIO_FLASH_EN, S3C_GPIO_PULL_NONE);
+		}
+	} else {
+		pr_info("%s: torch flash on\n", __func__);
+		gpio_request_one(GPIO_TORCH_EN, GPIOF_OUT_INIT_HIGH, "FLASH_OUTPUT_HIGH");
+		gpio_free(GPIO_TORCH_EN);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(rear_flash, S_IWUSR|S_IWGRP, NULL, flash_store);
+
 #ifdef CONFIG_FLED_RT5033_EXT_GPIO
 static rt5033_fled_info_t *g_fled_info;
 static struct mutex flash_m_lock;
@@ -183,7 +211,7 @@ void rt5033_dump_reg(void)
 
 EXPORT_SYMBOL(rt5033_dump_reg);
 
-int rt5033_gpio_flash_lock(bool lock)
+int rt55033_gpio_flash_lock(bool lock)
 {
 	int ret = 0;
 
@@ -208,10 +236,6 @@ int rt5033_gpio_flash_lock(bool lock)
 		} else
 			pr_info("%s: unlock\n", __func__);
 
-#ifdef CONFIG_DEBUG_MUTEXES
-		/* To avoid ower-checking: a different process can unlock flash */
-		g_fled_info->led_lock.owner = current;
-#endif
 		if (rt5033_fled_strobe_critial_section_unlock(&g_fled_info->base) < 0)
 			pr_err("%s: error, failed to critial_section_unlock\n", __func__);
 
@@ -224,60 +248,8 @@ unlock:
 	return ret;
 }
 
-EXPORT_SYMBOL(rt5033_gpio_flash_lock);
-
-static ssize_t flash_ext_store(struct device *dev, struct device_attribute *attr,
-                         const char *buf, size_t count)
-{
-	/* pr_info("%s: count %d, strlen %d, buf: %s\n", __func__, count, strlen(buf), buf); */
-
-	if(!__gpio_get_value(GPIO_MAIN_CAM_RST)) {
-		pr_info("%s: should lock/unlock in running camera!! pid %d\n",
-				__func__, task_pid_nr(current));
-	}
-
-	if ((count == 1 || count == 2) && (buf[0] == 'L' || buf[0] == 'l')) {
-		rt5033_gpio_flash_lock(true);
-	} else if ((count == 1 || count == 2) && (buf[0] == 'U' || buf[0] == 'u')) {
-		rt5033_gpio_flash_lock(false);
-	}
-
-	return count;
-}
-
-static DEVICE_ATTR(rear_flash_ext, S_IWUSR, NULL, flash_ext_store);
+EXPORT_SYMBOL(rt55033_gpio_flash_lock);
 #endif /* CONFIG_FLED_RT5033_EXT_GPIO */
-
-static ssize_t flash_store(struct device *dev, struct device_attribute *attr,
-                         const char *buf, size_t count)
-{
-	if(*buf == '0') {
-		pr_info("%s: torch flash off\n", __func__);
-		gpio_request_one(GPIO_TORCH_EN, GPIOF_OUT_INIT_LOW, "FLASH_OUTPUT_LOW");
-		gpio_free(GPIO_TORCH_EN);
-
-		if(__gpio_get_value(GPIO_MAIN_CAM_RST)) {
-			pr_err("%s: torch flash off on running camera.(%d)!!\n", __func__,
-						__gpio_get_value(GPIO_MAIN_CAM_RST));
-			/* hand over the permission in order to handle the flash pins in the isp of camera. */
-			s3c_gpio_cfgpin(GPIO_TORCH_EN, (2 << 16));
-			s3c_gpio_setpull(GPIO_TORCH_EN, S3C_GPIO_PULL_NONE);
-			s3c_gpio_cfgpin(GPIO_FLASH_EN, (2 << 24));
-			s3c_gpio_setpull(GPIO_FLASH_EN, S3C_GPIO_PULL_NONE);
-		}
-	} else {
-		pr_info("%s: torch flash on\n", __func__);
-#ifdef CONFIG_FLED_RT5033_EXT_GPIO
-		rt5033_flash_force_enable(true);
-#endif
-		gpio_request_one(GPIO_TORCH_EN, GPIOF_OUT_INIT_HIGH, "FLASH_OUTPUT_HIGH");
-		gpio_free(GPIO_TORCH_EN);
-	}
-
-	return count;
-}
-
-static DEVICE_ATTR(rear_flash, S_IWUSR|S_IWGRP, NULL, flash_store);
 
 int create_flash_sysfs(rt5033_fled_info_t *fled_info)
 {
@@ -303,12 +275,6 @@ int create_flash_sysfs(rt5033_fled_info_t *fled_info)
 	}
 
 #ifdef CONFIG_FLED_RT5033_EXT_GPIO
-	err = device_create_file(flash_dev, &dev_attr_rear_flash_ext);
-	if (unlikely(err < 0)) {
-		pr_err("flash_sysfs: failed to create device file, %s\n",
-			dev_attr_rear_flash_ext.attr.name);
-	}
-
 	mutex_init(&flash_m_lock);
 	strobe_lock = false;
 	g_fled_info = fled_info;

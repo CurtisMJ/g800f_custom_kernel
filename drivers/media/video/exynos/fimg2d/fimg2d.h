@@ -87,15 +87,6 @@ enum debug_level {
 #define FIMG2D_BITBLT_VERSION	_IOR(FIMG2D_IOCTL_MAGIC, 2, struct fimg2d_version)
 #define FIMG2D_BITBLT_ACTIVATE	_IOW(FIMG2D_IOCTL_MAGIC, 3, enum driver_act)
 
-enum fimg2d_qos_level {
-       G2D_LV0 = 0,
-       G2D_LV1,
-       G2D_LV2,
-       G2D_LV3,
-       G2D_LV4,
-       G2D_LV_END
-};
-
 enum fimg2d_qos_status {
 	FIMG2D_QOS_ON = 0,
 	FIMG2D_QOS_OFF
@@ -438,7 +429,6 @@ struct fimg2d_blit {
 	struct fimg2d_image *msk;
 	struct fimg2d_image *tmp;
 	struct fimg2d_image *dst;
-	enum fimg2d_qos_level qos_lv;
 	enum blit_sync sync;
 	unsigned int seq_no;
 };

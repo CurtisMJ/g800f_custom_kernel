@@ -137,9 +137,14 @@ static unsigned int exynos_get_safe_armvolt(unsigned int old_index, unsigned int
 	 * reguired voltage level
 	 */
 
-	if ((freq_table[new_index].frequency < exynos_info->mpll_freq_khz) &&
-		(freq_table[old_index].frequency < exynos_info->mpll_freq_khz))
-		safe_arm_volt = volt_table[exynos_info->pll_safe_idx];
+	if (exynos_info->need_apll_change != NULL) {
+		if (exynos_info->need_apll_change(old_index, new_index) &&
+			(freq_table[new_index].frequency < exynos_info->mpll_freq_khz) &&
+			(freq_table[old_index].frequency < exynos_info->mpll_freq_khz)) {
+				safe_arm_volt = volt_table[exynos_info->pll_safe_idx];
+			}
+
+	}
 
 	return safe_arm_volt;
 }

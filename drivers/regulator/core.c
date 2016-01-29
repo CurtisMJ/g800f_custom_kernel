@@ -1667,23 +1667,6 @@ int regulator_force_disable(struct regulator *regulator)
 }
 EXPORT_SYMBOL_GPL(regulator_force_disable);
 
-#ifdef CONFIG_MFD_RT5033_RESET_WA
-int regulator_get_status(struct regulator *regulator)
-{
-	struct regulator_dev *rdev = regulator->rdev;
-	struct regulator_ops *ops = rdev->desc->ops;
-
-	int ret = 0;
-
-	if (ops->get_status) {
-		ret = ops->get_status(rdev);
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(regulator_get_status);
-#endif
-
 static void regulator_disable_work(struct work_struct *work)
 {
 	struct regulator_dev *rdev = container_of(work, struct regulator_dev,

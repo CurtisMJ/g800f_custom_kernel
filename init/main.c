@@ -851,7 +851,7 @@ static noinline int init_post(void)
 	numa_default_policy();
 
 #ifdef CONFIG_SEC_GPIO_DVS
-#ifdef CONFIG_MACH_KMINI
+#ifndef CONFIG_MACH_GARDA
 	printk(KERN_INFO "gpio_dvs_check call \n");
 	/************************ Caution !!! ****************************/
 	/* This function must be located in appropriate INIT position

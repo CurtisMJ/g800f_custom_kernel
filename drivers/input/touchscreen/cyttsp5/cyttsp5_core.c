@@ -3938,22 +3938,13 @@ static int cyttsp5_put_device_into_sleep_(struct cyttsp5_core_data *cd)
 static int cyttsp5_core_poweroff_device_(struct cyttsp5_core_data *cd)
 {
 	int rc;
-	if (cd->irq_enabled) {
-		disable_irq(cd->irq);
-		cd->irq_enabled = false;
-	}
+
 	/* No need for cd->pdata->power check since we did it in probe */
+	cd->hw_power_state = false;
 	rc = cd->cpdata->power(cd->cpdata, 0, cd->dev, 0);
-	if (rc < 0) {
+	if (rc < 0)
 		tsp_debug_err(true, cd->dev, "%s: HW Power down fails r=%d\n",
 				__func__, rc);
-		if (!cd->irq_enabled) {
-			enable_irq(cd->irq);
-			cd->irq_enabled = true;
-		}
-		return rc;
-	}
-	cd->hw_power_state = false;
 	return rc;
 }
 
@@ -4267,8 +4258,7 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 		mutex_unlock(&cd->system_lock);
 
 	if (!cd->hw_power_state) {
-		if (printk_ratelimit())
-		dev_err(cd->dev, "%s: !cd->hw_power_state\n", __func__);
+		tsp_debug_info(true, cd->dev, "%s: !cd->hw_power_state\n", __func__);
 		return IRQ_HANDLED;
 	}
 
@@ -4768,10 +4758,6 @@ static int cyttsp5_core_poweron_device_(struct cyttsp5_core_data *cd)
 		goto exit;
 	}
 	cd->hw_power_state = true;
-	if (!cd->irq_enabled) {
-		irq_enable(cd->irq);
-		cd->irq_enabled = true;
-	}
 	cyttsp5_queue_startup(cd);
 exit:
 	return rc;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2015, Broadcom Corporation
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -18,7 +18,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: typedefs.h 453696 2014-02-06 01:10:20Z $
+ * $Id: typedefs.h 286783 2011-09-29 06:18:57Z $
  */
 
 #ifndef _TYPEDEFS_H_
@@ -65,7 +65,7 @@
 
 #endif	/* ! __cplusplus */
 
-#if defined(__LP64__)
+#if defined(__x86_64__)
 #define TYPEDEF_UINTPTR
 typedef unsigned long long int uintptr;
 #endif
@@ -77,7 +77,6 @@ typedef unsigned long long int uintptr;
 #if defined(_NEED_SIZE_T_)
 typedef long unsigned int size_t;
 #endif
-
 
 
 
@@ -122,7 +121,7 @@ typedef long unsigned int size_t;
 #if defined(__GNUC__) && defined(__STRICT_ANSI__)
 #define TYPEDEF_INT64
 #define TYPEDEF_UINT64
-#endif /* defined(__GNUC__) && defined(__STRICT_ANSI__) */
+#endif
 
 /* ICL accepts unsigned 64 bit type only, and complains in ANSI mode
  * for signed or unsigned

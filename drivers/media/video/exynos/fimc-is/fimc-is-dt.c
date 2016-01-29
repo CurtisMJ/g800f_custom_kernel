@@ -22,6 +22,36 @@
 #include "fimc-is-dt.h"
 
 #ifdef CONFIG_OF
+static int board_rev = 0;
+static int get_board_rev(struct device *dev)
+{
+	int ret = 0;
+	int board_rev_pin0, board_rev_pin1;
+	struct device_node *np = dev->of_node;
+
+	board_rev_pin0 = of_get_named_gpio(np, "gpios_board_rev", 0);
+	if (!gpio_is_valid(board_rev_pin0)) {
+		dev_err(dev, "failed to get main board_rev_pin0\n");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	board_rev_pin1 = of_get_named_gpio(np, "gpios_board_rev", 1);
+	if (!gpio_is_valid(board_rev_pin1)) {
+		dev_err(dev, "failed to get main board_rev_pin1\n");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	gpio_request_one(board_rev_pin0, GPIOF_IN, "BOARD_REV_PIN0");
+	gpio_request_one(board_rev_pin1, GPIOF_IN, "BOARD_REV_PIN1");
+	board_rev = __gpio_get_value(board_rev_pin0) << 0;
+	board_rev |= __gpio_get_value(board_rev_pin1) << 1;
+
+p_err:
+	return ret;
+}
+
 static int parse_gate_info(struct exynos_platform_fimc_is *pdata, struct device_node *np)
 {
 	int ret = 0;
@@ -148,10 +178,6 @@ static int parse_dvfs_data(struct exynos_platform_fimc_is *pdata, struct device_
 	DT_READ_U32(np, "rear_camcording_fhd_cam", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_FHD][FIMC_IS_DVFS_CAM]);
 	DT_READ_U32(np, "rear_camcording_fhd_mif", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_FHD][FIMC_IS_DVFS_MIF]);
 	DT_READ_U32(np, "rear_camcording_fhd_i2c", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_FHD][FIMC_IS_DVFS_I2C]);
-	DT_READ_U32(np, "rear_camcording_whd_int", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_WHD][FIMC_IS_DVFS_INT]);
-	DT_READ_U32(np, "rear_camcording_whd_cam", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_WHD][FIMC_IS_DVFS_CAM]);
-	DT_READ_U32(np, "rear_camcording_whd_mif", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_WHD][FIMC_IS_DVFS_MIF]);
-	DT_READ_U32(np, "rear_camcording_whd_i2c", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_WHD][FIMC_IS_DVFS_I2C]);
 	DT_READ_U32(np, "rear_camcording_uhd_int", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_UHD][FIMC_IS_DVFS_INT]);
 	DT_READ_U32(np, "rear_camcording_uhd_cam", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_UHD][FIMC_IS_DVFS_CAM]);
 	DT_READ_U32(np, "rear_camcording_uhd_mif", pdata->dvfs_data[FIMC_IS_SN_REAR_CAMCORDING_UHD][FIMC_IS_DVFS_MIF]);
@@ -245,12 +271,12 @@ struct exynos_platform_fimc_is *fimc_is_parse_dt(struct device *dev)
 	struct device_node *subip_info_np;
 	struct device_node *dvfs_np;
 	struct device_node *np = dev->of_node;
-#ifdef CONFIG_COMPANION_USE
-	int retVal = 0;
-#endif
 
 	if (!np)
 		return ERR_PTR(-ENOENT);
+
+	if (get_board_rev(dev) < 0)
+		pr_warn("%s: Failed to get_board_rev\n", __func__);
 
 	pdata = kzalloc(sizeof(struct exynos_platform_fimc_is), GFP_KERNEL);
 	if (!pdata) {
@@ -267,21 +293,6 @@ struct exynos_platform_fimc_is *fimc_is_parse_dt(struct device *dev)
 
 	dev->platform_data = pdata;
 
-#ifdef CONFIG_COMPANION_USE
-	retVal = of_property_read_u32(np, "companion_spi_channel", &pdata->companion_spi_channel);
-	if (retVal) {
-		err("spi_channel read is fail(%d)", retVal);
-	}
-
-	pdata->use_two_spi_line = of_property_read_bool(np, "use_two_spi_line");
-#endif
-#ifdef CONFIG_USE_VENDER_FEATURE
-	retVal = of_property_read_u32(np, "use_sensor_dynamic_voltage_mode", &pdata->use_sensor_dynamic_voltage_mode);
-	if (retVal) {
-		err("use_sensor_dynamic_voltage_mode read is fail(%d)", retVal);
-		pdata->use_sensor_dynamic_voltage_mode = 0;
-	}
-#endif
 	subip_info_np = of_find_node_by_name(np, "subip_info");
 	if (!subip_info_np) {
 		printk(KERN_ERR "%s: can't find fimc_is subip_info node\n", __func__);
@@ -315,16 +326,9 @@ int fimc_is_sensor_parse_dt(struct platform_device *pdev)
 	struct exynos_platform_fimc_is_sensor *pdata;
 	struct device_node *dnode;
 	struct device *dev;
-	int gpio_reset = 0, gpio_standby = 0;
-#ifdef CONFIG_SOC_EXYNOS5422
-	int gpios_cam_en = 0;
-#endif
-#if !defined(CONFIG_USE_VENDER_FEATURE) /* LSI Patch */
-	int gpio_cam_en = 0;
+	int gpio_reset, gpio_standby;
 	int gpio_comp_en, gpio_comp_rst;
-#else
-	const char *name;
-#endif
+	int gpio_cam_en;
 	int gpio_none = 0;
 	u32 id;
 
@@ -333,6 +337,9 @@ int fimc_is_sensor_parse_dt(struct platform_device *pdev)
 
 	dev = &pdev->dev;
 	dnode = dev->of_node;
+
+	if (get_board_rev(dev) < 0)
+		pr_warn("%s: Failed to get_board_rev\n", __func__);
 
 	pdata = kzalloc(sizeof(struct exynos_platform_fimc_is_sensor), GFP_KERNEL);
 	if (!pdata) {
@@ -398,40 +405,13 @@ int fimc_is_sensor_parse_dt(struct platform_device *pdev)
 	DT_READ_U32(dnode, "flash_first_gpio",   pdata->flash_first_gpio );
 	DT_READ_U32(dnode, "flash_second_gpio",  pdata->flash_second_gpio);
 
-#ifdef CONFIG_USE_VENDER_FEATURE
-	ret = of_property_read_string(dnode, "sensor_name", &name);
-	if (ret) {
-		err("sensor_name read is fail(%d)", ret);
-		goto p_err;
-	}
-	strcpy(pdata->sensor_name, name);
-
-	ret = of_property_read_u32(dnode, "sensor_id", &pdata->sensor_id);
-	if (ret) {
-		err("sensor_id read is fail(%d)", ret);
-		goto p_err;
-	}
-#endif
 	gpio_reset = of_get_named_gpio(dnode, "gpio_reset", 0);
 	if (!gpio_is_valid(gpio_reset)) {
 		dev_err(dev, "failed to get PIN_RESET\n");
 		ret = -EINVAL;
 		goto p_err;
-	} else {
-		gpio_request_one(gpio_reset, GPIOF_OUT_INIT_LOW, "CAM_GPIO_OUTPUT_LOW");
-		gpio_free(gpio_reset);
 	}
-#ifdef CONFIG_SOC_EXYNOS5422
-	gpios_cam_en = of_get_named_gpio(dnode, "gpios_cam_en", 0);
-	if (!gpio_is_valid(gpios_cam_en)) {
-		dev_err(dev, "failed to get main/front cam en gpio\n");
-	} else {
-		gpio_request_one(gpios_cam_en, GPIOF_OUT_INIT_LOW, "CAM_GPIO_OUTPUT_LOW");
-		gpio_free(gpios_cam_en);
-	}
-#endif
 
-#if !defined(CONFIG_USE_VENDER_FEATURE) /* LSI Patch */
 	/* Optional Feature */
 	gpio_comp_en = of_get_named_gpio(dnode, "gpios_comp_en", 0);
 	if (!gpio_is_valid(gpio_comp_en))
@@ -455,7 +435,7 @@ int fimc_is_sensor_parse_dt(struct platform_device *pdev)
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 3, gpio_comp_en, 0, NULL, PIN_OUTPUT_HIGH);
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 4, gpio_comp_rst, 0, NULL, PIN_RESET);
 #if defined(CONFIG_SOC_EXYNOS5430) || defined(CONFIG_SOC_EXYNOS5433)
-	if (id == SENSOR_POSITION_REAR) {
+	if ((id == SENSOR_POSITION_REAR) && (board_rev == 2)) {
 		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 5, gpio_none, 0, "af", PIN_FUNCTION);
 	}
 #else
@@ -482,108 +462,19 @@ int fimc_is_sensor_parse_dt(struct platform_device *pdev)
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 4, gpio_cam_en, 0, NULL, PIN_OUTPUT_LOW);
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 3, gpio_none, 0, NULL, PIN_END);
 
-#else /* TN CODE */
-
-	if (id == SENSOR_POSITION_FRONT) {
-		gpio_standby = of_get_named_gpio(dnode, "gpio_standby", 0);
-		if (!gpio_is_valid(gpio_standby)) {
-			dev_err(dev, "failed to get gpio_standby\n");
-		} else {
-			gpio_request_one(gpio_standby, GPIOF_OUT_INIT_LOW, "CAM_GPIO_OUTPUT_LOW");
-			gpio_free(gpio_standby);
-		}
+	/* Xyref5430 board revision config */
+	if ((id == SENSOR_POSITION_FRONT) && board_rev) {
+		pdata->mclk_ch = 2;
+		pdata->csi_ch = 2;
+		pdata->flite_ch = 2;
+		pdata->i2c_ch = 2;
 	}
 
-#ifdef CONFIG_SOC_EXYNOS5422
-	if (id == SENSOR_POSITION_REAR) {
-		/* BACK CAMERA	- POWER ON */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 0, gpio_none, 0, NULL, 0, PIN_END);
-
-		/* BACK CAMERA	- POWER OFF */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 0, gpio_none, 0, NULL, 0, PIN_END);
-	} else {
-		/* FRONT CAMERA  - POWER ON */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 0, gpio_standby, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 1, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 2, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 3, gpios_cam_en, 0, NULL, 1000, PIN_OUTPUT_HIGH);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 4, gpio_reset, 0, NULL, 0, PIN_OUTPUT_HIGH);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 5, gpio_none, 0, "ch", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 6, gpio_none, 0, NULL, 0, PIN_END);
-
-		/* FRONT CAMERA  - POWER OFF */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 0, gpio_standby, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 1, gpio_none, 0, "off", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 2, gpio_reset, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 3, gpios_cam_en, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 4, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 5, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 6, gpio_none, 0, NULL, 0, PIN_END);
-
-		/* VISION CAMERA  - POWER ON */
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 0, gpio_reset, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 1, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 2, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 3, gpios_cam_en, 0, NULL, 1000, PIN_OUTPUT_HIGH);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 4, gpio_standby, 0, NULL, 0, PIN_OUTPUT_HIGH);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 5, gpio_none, 0, "ch", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 6, gpio_none, 0, NULL, 0, PIN_END);
-
-		/* VISION CAMERA  - POWER OFF */
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 0, gpio_reset, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 1, gpio_none, 0, "off", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 2, gpio_standby, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 3, gpios_cam_en, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 4, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 5, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 6, gpio_none, 0, NULL, 0, PIN_END);
+	if ((id == SENSOR_POSITION_REAR) && (board_rev == 2)) {
+		pdata->i2c_ch = 0x0100;
+		pdata->i2c_addr = 0x5A5A;
 	}
-#else /*CONFIG_SOC_EXYNOS5430*/
-	if (id == SENSOR_POSITION_REAR) {
-		/* BACK CAMERA  - POWER ON */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 0, gpio_none, 0, NULL, 0, PIN_END);
 
-		/* BACK CAMERA  - POWER OFF */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 0, gpio_none, 0, NULL, 0, PIN_END);
-	} else {
-		/* FRONT CAMERA  - POWER ON */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 0, gpio_standby, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 1, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 2, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 3, gpio_none, 0, "VT_CAM_1.2V", 1000, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 4, gpio_reset, 0, NULL, 0, PIN_OUTPUT_HIGH);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 5, gpio_none, 0, "ch", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 6, gpio_none, 0, NULL, 0, PIN_END);
-
-		/* FRONT CAMERA  - POWER OFF */
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 0, gpio_standby, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 1, gpio_none, 0, "off", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 2, gpio_reset, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 3, gpio_none, 0, "VT_CAM_1.2V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 4, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 5, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 6, gpio_none, 0, NULL, 0, PIN_END);
-
-		/* VISION CAMERA  - POWER ON */
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 0, gpio_reset, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 1, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 2, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 3, gpio_none, 0, "VT_CAM_1.2V", 1000, PIN_REGULATOR_ON);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 4, gpio_standby, 0, NULL, 0, PIN_OUTPUT_HIGH);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 5, gpio_none, 0, "ch", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, 6, gpio_none, 0, NULL, 0, PIN_END);
-
-		/* VISION CAMERA  - POWER OFF */
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 0, gpio_reset, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 1, gpio_none, 0, "off", 0, PIN_FUNCTION);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 2, gpio_standby, 0, NULL, 0, PIN_OUTPUT_LOW);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 3, gpio_none, 0, "VT_CAM_1.2V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 4, gpio_none, 0, "VT_CAM_2.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 5, gpio_none, 0, "VT_CAM_1.8V", 0, PIN_REGULATOR_OFF);
-		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, 6, gpio_none, 0, NULL, 0, PIN_END);
-	}
-#endif
-#endif
 	pdev->id = id;
 
 	dev->platform_data = pdata;
@@ -709,14 +600,9 @@ int fimc_is_companion_parse_dt(struct platform_device *pdev)
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 5, gpio_comp_en, 0, NULL, 150, PIN_OUTPUT_HIGH);
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 6, gpio_comp_rst, 0, NULL, 0, PIN_OUTPUT_HIGH);
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 7, gpio_none, 0, "ch", 0, PIN_FUNCTION);
-#ifdef CONFIG_SOC_EXYNOS5433
-	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 8, gpio_none, 0, "af", 0, PIN_FUNCTION);
-	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 9, gpio_reset, 0, NULL, 0, PIN_OUTPUT_HIGH);
-	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 10, gpio_none, 0, NULL, 0, PIN_END);
-#else
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 8, gpio_reset, 0, NULL, 0, PIN_OUTPUT_HIGH);
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, 9, gpio_none, 0, NULL, 0, PIN_END);
-#endif
+
 	/* BACK CAMERA  - POWER OFF */
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 0, gpio_none, 0, "CAM_AF_2.8V_AP", 2000, PIN_REGULATOR_OFF);
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, 1, gpio_none, 0, "off", 0, PIN_FUNCTION);

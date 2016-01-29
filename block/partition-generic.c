@@ -17,12 +17,7 @@
 #include <linux/ctype.h>
 #include <linux/genhd.h>
 #include <linux/blktrace_api.h>
-
-#ifdef CONFIG_BLOCK_SUPPORT_STLOG
 #include <linux/stlog.h>
-#else
-#define ST_LOG(fmt,...)
-#endif
 
 #include "partitions/check.h"
 
@@ -260,7 +255,7 @@ void delete_partition(struct gendisk *disk, int partno)
 	struct disk_part_tbl *ptbl = disk->part_tbl;
 	struct hd_struct *part;
 
-#ifdef CONFIG_BLOCK_SUPPORT_STLOG
+#ifdef CONFIG_STLOG
 	struct device *dev;
 #endif
 
@@ -274,7 +269,7 @@ void delete_partition(struct gendisk *disk, int partno)
 	rcu_assign_pointer(ptbl->part[partno], NULL);
 	rcu_assign_pointer(ptbl->last_lookup, NULL);
 	kobject_put(part->holder_dir);
-#ifdef CONFIG_BLOCK_SUPPORT_STLOG
+#ifdef CONFIG_STLOG
 	dev = part_to_dev(part);
 	ST_LOG("<%s> KOBJ_REMOVE %d:%d %s",
 		__func__, MAJOR(dev->devt), MINOR(dev->devt), dev->kobj.name);

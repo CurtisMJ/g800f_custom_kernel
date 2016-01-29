@@ -48,12 +48,12 @@
 #define HAS_FW_CLOCK_GATE
 
 #elif defined(CONFIG_SOC_EXYNOS5433)
+#undef ENABLE_SETFILE
 #define SUPPORTED_IS_CMD_VER	132
 #define TARGET_SPI_CH_FOR_PERI	0
 #define FIMC_IS_CSI_VERSION		CSI_VERSION_0000_0000
 #define FIMC_IS_VERSION		FIMC_IS_VERSION_000
 #define HAS_FW_CLOCK_GATE
-#define MAX_ZOOM_LEVEL 8
 
 #elif defined(CONFIG_SOC_EXYNOS5422)
 #undef ENABLE_SETFILE
@@ -107,11 +107,6 @@
 #else
 #error fimc-is driver can NOT support this platform
 
-#endif
-
-#if !defined(MAX_ZOOM_LEVEL)
-/* default max zoom lv is 4 */
-#define MAX_ZOOM_LEVEL 4
 #endif
 
 /* notifier for MIF throttling */
@@ -191,10 +186,6 @@
 #define GET_3AA_ID(video) ((video->id < 14) ? 0 : 1)
 #define GET_3AAC_ID(video) ((video->id < FIMC_IS_VIDEO_3A1_NUM) ? 0 : 1)
 
-/* sync log with HAL, FW */
-#define log_sync(sync_id) \
-	pr_info("[@]FIMC_IS_SYNC %d\n", sync_id)
-
 #ifdef err
 #undef err
 #endif
@@ -226,9 +217,6 @@
 
 #define mrinfo(fmt, object, frame, args...) \
 	pr_info("[@][%d:F%d]" fmt, object->instance, frame->fcount,  ##args)
-
-#define mrdbg(fmt, object, frame, args...) \
-	printk(KERN_DEBUG "[@][%d:F%d]" fmt, object->instance, frame->fcount,  ##args)
 
 #define mdbg_common(prefix, fmt, instance, args...)				\
 	do {									\

@@ -217,10 +217,6 @@ int csi_hw_s_control(unsigned long __iomem *base_reg,
 	val |= (0xF << 8);
 
 	switch (pixelformat) {
-	case V4L2_PIX_FMT_SBGGR8:
-	case V4L2_PIX_FMT_SGBRG8:
-	case V4L2_PIX_FMT_SGRBG8:
-	case V4L2_PIX_FMT_SRGGB8:
 	case V4L2_PIX_FMT_SBGGR10:
 	case V4L2_PIX_FMT_SGBRG10:
 	case V4L2_PIX_FMT_SGRBG10:
@@ -237,6 +233,10 @@ int csi_hw_s_control(unsigned long __iomem *base_reg,
 	case V4L2_PIX_FMT_YVU420:
 	case V4L2_PIX_FMT_NV21:
 	case V4L2_PIX_FMT_YUYV:
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SGBRG8:
+	case V4L2_PIX_FMT_SGRBG8:
+	case V4L2_PIX_FMT_SRGGB8:
 		/* output width of CH0 is 32 bits(32bit align) */
 		val |= (1 << 20);
 		break;

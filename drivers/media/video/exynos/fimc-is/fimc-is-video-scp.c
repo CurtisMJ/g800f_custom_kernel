@@ -103,7 +103,7 @@ static int fimc_is_scp_video_open(struct file *file)
 	info("[SCP:V:%d] %s\n", vctx->instance, __func__);
 
 	refcount = atomic_read(&core->video_isp.refcount);
-	if (refcount > FIMC_IS_MAX_NODES || refcount < 1) {
+	if (refcount > FIMC_IS_MAX_NODES) {
 		err("invalid ischain refcount(%d)", refcount);
 		close_vctx(file, video, vctx);
 		ret = -EINVAL;
@@ -562,10 +562,10 @@ static int fimc_is_scp_video_s_ctrl(struct file *file, void *priv,
 					ctrl->value);
 			ret = -EINVAL;
 		} else {
-			device->color_range &= ~FIMC_IS_SCP_CRANGE_MASK;
+			device->setfile &= ~FIMC_IS_SCP_CRANGE_MASK;
 
 			if (ctrl->value)
-				device->color_range	|=
+				device->setfile	|=
 					(FIMC_IS_CRANGE_LIMITED << FIMC_IS_SCP_CRANGE_SHIFT);
 		}
 		break;

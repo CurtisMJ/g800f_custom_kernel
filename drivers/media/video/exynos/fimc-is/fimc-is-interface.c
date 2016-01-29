@@ -235,36 +235,6 @@ int print_req_work_list(struct fimc_is_work_list *this)
 	return 0;
 }
 
-static int print_work_data_state(struct fimc_is_interface *this)
-{
-	struct work_struct *work;
-	unsigned long *bits = NULL;
-
-	work = &this->work_wq[INTR_GENERAL];
-	bits = (work_data_bits(work));
-	info("INTR_GENERAL wq state : (0x%lx)", *bits);
-	work = &this->work_wq[INTR_3A0C_FDONE];
-	bits = (work_data_bits(work));
-	info("INTR_3A0C_FDONE wq state : (0x%lx)", *bits);
-	work = &this->work_wq[INTR_3A1C_FDONE];
-	bits = (work_data_bits(work));
-	info("INTR_3A1C_FDONE wq state : (0x%lx)", *bits);
-	work = &this->work_wq[INTR_SCC_FDONE];
-	bits = (work_data_bits(work));
-	info("INTR_SCC_FDONE wq state : (0x%lx)", *bits);
-	work = &this->work_wq[INTR_DIS_FDONE];
-	bits = (work_data_bits(work));
-	info("INTR_DIS_FDONE wq state : (0x%lx)", *bits);
-	work = &this->work_wq[INTR_SCP_FDONE];
-	bits = (work_data_bits(work));
-	info("INTR_SCP_FDONE wq state : (0x%lx)", *bits);
-	work = &this->work_wq[INTR_SHOT_DONE];
-	bits = (work_data_bits(work));
-	info("INTR_SHOT_DONE wq state : (0x%lx)", *bits);
-
-	return 0;
-}
-
 static int set_req_work(struct fimc_is_work_list *this,
 	struct fimc_is_work *work)
 {
@@ -583,9 +553,6 @@ static int fimc_is_set_cmd(struct fimc_is_interface *itf,
 	if (ret) {
 		exit_request_barrier(itf);
 		err("%d command is timeout", msg->command);
-		fimc_is_hw_regdump(itf);
-		print_req_work_list(&itf->work_list[INTR_GENERAL]);
-		print_work_data_state(itf);
 		clr_busystate(itf, msg->command);
 		ret = -ETIME;
 		goto exit;
@@ -718,8 +685,6 @@ static int fimc_is_set_cmd_nblk(struct fimc_is_interface *this,
 	switch (msg->command) {
 	case HIC_SET_CAM_CONTROL:
 		set_req_work(&this->nblk_cam_ctrl, work);
-		break;
-	case HIC_MSG_TEST:
 		break;
 	default:
 		err("unresolved command\n");
@@ -2082,7 +2047,7 @@ static void interface_timer(unsigned long data)
 			}
 			spin_unlock_irq(&itf->shot_check_lock);
 
-			if (test_bit(FIMC_IS_GROUP_READY, &device->group_3aa.state)) {
+			if (test_bit(FIMC_IS_GROUP_ACTIVE, &device->group_3aa.state)) {
 				framemgr = GET_GROUP_FRAMEMGR(&device->group_3aa);
 				framemgr_e_barrier_irqs(framemgr, 0, flags);
 				scount_3ax = framemgr->frame_pro_cnt;
@@ -2090,7 +2055,7 @@ static void interface_timer(unsigned long data)
 				framemgr_x_barrier_irqr(framemgr, 0, flags);
 			}
 
-			if (test_bit(FIMC_IS_GROUP_READY, &device->group_isp.state)) {
+			if (test_bit(FIMC_IS_GROUP_ACTIVE, &device->group_isp.state)) {
 				framemgr = GET_GROUP_FRAMEMGR(&device->group_isp);
 				framemgr_e_barrier_irqs(framemgr, 0, flags);
 				scount_isp = framemgr->frame_pro_cnt;
@@ -2098,7 +2063,7 @@ static void interface_timer(unsigned long data)
 				framemgr_x_barrier_irqr(framemgr, 0, flags);
 			}
 
-			if (test_bit(FIMC_IS_GROUP_READY, &device->group_dis.state)) {
+			if (test_bit(FIMC_IS_GROUP_ACTIVE, &device->group_dis.state)) {
 				framemgr = GET_GROUP_FRAMEMGR(&device->group_dis);
 				framemgr_e_barrier_irqs(framemgr, 0, flags);
 				shot_count += framemgr->frame_pro_cnt;
@@ -2389,7 +2354,6 @@ int fimc_is_interface_probe(struct fimc_is_interface *this,
 	clear_bit(IS_IF_STATE_OPEN, &this->state);
 	clear_bit(IS_IF_STATE_START, &this->state);
 	clear_bit(IS_IF_STATE_BUSY, &this->state);
-	clear_bit(IS_IF_STATE_READY, &this->state);
 
 	init_work_list(&this->nblk_cam_ctrl,
 		TRACE_WORK_ID_CAMCTRL, MAX_NBLOCKING_COUNT);
@@ -2447,7 +2411,6 @@ int fimc_is_interface_open(struct fimc_is_interface *this)
 	atomic_set(&this->lock_pid, 0);
 	clear_bit(IS_IF_STATE_START, &this->state);
 	clear_bit(IS_IF_STATE_BUSY, &this->state);
-	clear_bit(IS_IF_STATE_READY, &this->state);
 
 	init_timer(&this->timer);
 	this->timer.expires = jiffies +
@@ -2590,12 +2553,7 @@ int fimc_is_hw_regdump(struct fimc_is_interface *this)
 		goto p_err;
 	}
 
-	info("\n### MCUCTL Raw Dump ###\n");
-	regs = (this->regs);
-	for (i = 0; i < 16; ++i)
-		info("MCTL Raw[%d] : %08X\n", i, readl(regs + (4 * i)));
-
-	info("\n### COMMON REGS dump ###\n");
+	info("\n### MCUCTL dump ###\n");
 	regs = this->com_regs;
 	for (i = 0; i < 64; ++i)
 		info("MCTL[%d] : %08X\n", i, readl(regs + (4 * i)));
@@ -2648,29 +2606,6 @@ p_err:
 	return ret;
 }
 
-int fimc_is_hw_msg_test(struct fimc_is_interface *this, u32 sync_id, u32 msg_test_id)
-{
-	int ret = 0;
-	struct fimc_is_work work;
-	struct fimc_is_msg *msg;
-
-	dbg_interface("msg_test_nblk(%d)\n", msg_test_id);
-
-	msg = &work.msg;
-	msg->id = 0;
-	msg->command = HIC_MSG_TEST;
-	msg->instance = 0;
-	msg->group = 0;
-	msg->parameter1 = msg_test_id;
-	msg->parameter2 = sync_id;
-	msg->parameter3 = 0;
-	msg->parameter4 = 0;
-
-	ret = fimc_is_set_cmd_nblk(this, &work);
-
-	return ret;
-}
-
 int fimc_is_hw_enum(struct fimc_is_interface *this)
 {
 	int ret = 0;
@@ -2678,10 +2613,6 @@ int fimc_is_hw_enum(struct fimc_is_interface *this)
 	volatile struct is_common_reg __iomem *com_regs;
 
 	dbg_interface("enum()\n");
-
-	/* check if hw_enum is already operated */
-	if (test_bit(IS_IF_STATE_READY, &this->state))
-	    goto exit;
 
 	ret = wait_initstate(this);
 	if (ret) {
@@ -2712,8 +2643,6 @@ int fimc_is_hw_enum(struct fimc_is_interface *this)
 	writel(msg.parameter3, &com_regs->hic_param3);
 	writel(msg.parameter4, &com_regs->hic_param4);
 	send_interrupt(this);
-
-	set_bit(IS_IF_STATE_READY, &this->state);
 
 exit:
 	return ret;

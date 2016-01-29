@@ -549,11 +549,3 @@ config SWAP_ENABLE_READAHEAD
 	  also paged in expecting those pages will be used in near future.
 	  This behaviour is good at disk-based system, but not on in-memory
 	  compression (e.g. zram).
-
-config MMAP_READAROUND_LIMIT
-	int "Limit mmap readaround upperbound"
-	default 0
-	help
-	  Inappropriate mmap readaround size can hurt device performance
-	  during the sluggish situation. Add the hard upper-limit for
-	  mmap readaround.

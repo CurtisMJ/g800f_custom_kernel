@@ -488,21 +488,25 @@ int sc_hwset_dst_image_format(struct sc_dev *sc, u32 pixelformat)
 	return 0;
 }
 
-void sc_hwset_pre_multi_format(struct sc_dev *sc, bool src, bool dst)
+void sc_hwset_pre_multi_format(struct sc_dev *sc)
 {
 	unsigned long cfg = readl(sc->regs + SCALER_SRC_CFG);
 
-	if (src && ((cfg & SCALER_CFG_FMT_MASK) == SCALER_CFG_FMT_ARGB8888)) {
+	if ((cfg & SCALER_CFG_FMT_MASK) == SCALER_CFG_FMT_ARGB8888) {
 		cfg &= ~SCALER_CFG_FMT_MASK;
 		cfg |= SCALER_CFG_FMT_P_ARGB8888;
 		writel(cfg, sc->regs + SCALER_SRC_CFG);
+	} else {
+		dev_err(sc->dev, "only support src pre-multiplied argb888\n");
 	}
 
 	cfg = readl(sc->regs + SCALER_DST_CFG);
-	if (dst && ((cfg & SCALER_CFG_FMT_MASK) == SCALER_CFG_FMT_ARGB8888)) {
+	if ((cfg & SCALER_CFG_FMT_MASK) == SCALER_CFG_FMT_ARGB8888) {
 		cfg &= ~SCALER_CFG_FMT_MASK;
 		cfg |= SCALER_CFG_FMT_P_ARGB8888;
 		writel(cfg, sc->regs + SCALER_DST_CFG);
+	} else {
+		dev_err(sc->dev, "only support dst pre-multiplied argb888\n");
 	}
 }
 

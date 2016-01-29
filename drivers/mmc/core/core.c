@@ -32,6 +32,7 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
+#include <linux/stlog.h>
 #include <linux/mmc/mmc_trace.h>
 
 #include "core.h"
@@ -42,12 +43,6 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 #include "sdio_ops.h"
-
-#ifdef CONFIG_MMC_SUPPORT_STLOG
-#include <linux/stlog.h>
-#else
-#define ST_LOG(fmt,...)
-#endif
 
 #if defined(CONFIG_BLK_DEV_IO_TRACE)
 #include "../card/queue.h"

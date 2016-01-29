@@ -19,7 +19,6 @@
  */
 
 #include "sdcardfs.h"
-#include "version.h"
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/parser.h>
@@ -197,7 +196,7 @@ static int sdcardfs_read_super(struct super_block *sb, const char *dev_name,
 	struct sdcardfs_sb_info *sb_info;
 	void *pkgl_id;
 
-	printk(KERN_INFO "sdcardfs: version %s\n", SDCARDFS_VERSION);
+	printk(KERN_INFO "sdcardfs version 2.0\n");
 
 	if (!dev_name) {
 		printk(KERN_ERR
@@ -316,11 +315,7 @@ static int sdcardfs_read_super(struct super_block *sb, const char *dev_name,
 		}
 		fix_derived_permission(sb->s_root->d_inode);
 
-		sb_info->devpath = kzalloc(PATH_MAX, GFP_KERNEL);
-		if(sb_info->devpath && dev_name)
-			memcpy(sb_info->devpath, dev_name, PATH_MAX);
-		
-		if (!silent && !err)
+		if (!silent)
 			printk(KERN_INFO "sdcardfs: mounted on top of %s type %s\n",
 						dev_name, lower_sb->s_type->name);
 		goto out;
@@ -420,9 +415,10 @@ static void __exit exit_sdcardfs_fs(void)
 	pr_info("Completed sdcardfs module unload\n");
 }
 
-MODULE_AUTHOR("Woojoong Lee, Daeho Jeong, Kitae Lee, Yeongjin Gil"
-        " System Memory Lab., Samsung Electronics");
-MODULE_DESCRIPTION("Sdcardfs " SDCARDFS_VERSION);
+MODULE_AUTHOR("Erez Zadok, Filesystems and Storage Lab, Stony Brook University"
+	      " (http://www.fsl.cs.sunysb.edu/)");
+MODULE_DESCRIPTION("Wrapfs " SDCARDFS_VERSION
+		   " (http://wrapfs.filesystems.org/)");
 MODULE_LICENSE("GPL");
 
 module_init(init_sdcardfs_fs);

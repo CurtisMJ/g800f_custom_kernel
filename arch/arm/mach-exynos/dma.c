@@ -713,8 +713,21 @@ static AMBA_AHB_DEVICE(exynos5260_adma,  "dma-pl330.2", 0x00041330,
 
 static int __init exynos_dma_init(void)
 {
+#ifdef CONFIG_MACH_UNIVERSAL4415
+	void __iomem *pdma_tz;
+	void __iomem *i2s_tz;
+#endif
+
 	if (of_have_populated_dt())
 		return 0;
+
+#ifdef CONFIG_MACH_UNIVERSAL4415
+	pdma_tz = ioremap(0x10140000, SZ_4K);
+	i2s_tz = ioremap(0x10160000, SZ_4K);
+
+	__raw_writel(0x2, pdma_tz + 0x81c);
+	__raw_writel(0x1, i2s_tz + 0x81c);
+#endif
 
 	if (soc_is_exynos4210()) {
 		exynos_pdma0_pdata.nr_valid_peri =

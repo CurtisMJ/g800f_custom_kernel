@@ -53,7 +53,5 @@ struct fimc_is_device_companion {
 int fimc_is_companion_open(struct fimc_is_device_companion *device);
 int fimc_is_companion_close(struct fimc_is_device_companion *device);
 int fimc_is_companion_wait(struct fimc_is_device_companion *device);
-int fimc_is_companion_runtime_suspend(struct device *dev);
-int fimc_is_companion_runtime_resume(struct device *dev);
 
 #endif

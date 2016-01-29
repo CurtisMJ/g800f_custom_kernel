@@ -884,22 +884,6 @@ static int audit_in_mask(const struct audit_krule *rule, unsigned long val)
 	return rule->mask[word] & bit;
 }
 
-static int audit_in_mask(const struct audit_krule *rule, unsigned long val)
-{
-	int word, bit;
-
-	if (val > 0xffffffff)
-		return false;
-
-	word = AUDIT_WORD(val);
-	if (word >= AUDIT_BITMASK_SIZE)
-		return false;
-
-	bit = AUDIT_BIT(val);
-
-	return rule->mask[word] & bit;
-}
-
 /* At syscall entry and exit time, this filter is called if the
  * audit_state is not low enough that auditing cannot take place, but is
  * also not high enough that we already know we have to write an audit
@@ -1631,7 +1615,6 @@ static void audit_log_exit(struct audit_context *context, struct task_struct *ts
 	context->fsgid = cred->fsgid;
 	context->personality = tsk->personality;
 
-	if (context->major != 294 ) { /* __NR_setsockopt */
 	ab = audit_log_start(context, GFP_KERNEL, AUDIT_SYSCALL);
 	if (!ab)
 		return;		/* audit_panic has been called */
@@ -1674,7 +1657,6 @@ static void audit_log_exit(struct audit_context *context, struct task_struct *ts
 	audit_log_task_info(ab, tsk);
 	audit_log_key(ab, context->filterkey);
 	audit_log_end(ab);
-	} /* end of filter:__NR_setsockopt */
 
 	for (aux = context->aux; aux; aux = aux->next) {
 

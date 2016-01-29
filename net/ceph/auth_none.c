@@ -44,11 +44,6 @@ static int build_request(struct ceph_auth_client *ac, void *buf, void *end)
 	return 0;
 }
 
-static int build_request(struct ceph_auth_client *ac, void *buf, void *end)
-{
-	return 0;
-}
-
 /*
  * the generic auth code decode the global_id, and we carry no actual
  * authenticate state, so nothing happens here.

@@ -574,11 +574,6 @@ ovp_uvlo_check_error:
 static bool sec_bat_ovp_uvlo_result(
 		struct sec_battery_info *battery, int health)
 {
-	if (battery->cable_type == POWER_SUPPLY_TYPE_BATTERY) {
-		dev_dbg(battery->dev, "%s: No need to check without charger\n", __func__);
-		return false;
-	}
-
 	if (battery->health != health) {
 		battery->health = health;
 		switch (health) {
@@ -627,11 +622,6 @@ static bool sec_bat_ovp_uvlo(struct sec_battery_info *battery)
 	} else if (battery->factory_mode) {
 		dev_dbg(battery->dev, "%s: No need to check in factory mode\n",
 			__func__);
-		return false;
-	}
-
-	if (battery->cable_type == POWER_SUPPLY_TYPE_BATTERY) {
-		dev_dbg(battery->dev, "%s: No need to check without charger\n", __func__);
 		return false;
 	}
 

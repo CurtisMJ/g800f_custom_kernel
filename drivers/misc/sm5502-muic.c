@@ -668,8 +668,6 @@ static ssize_t sm5502_muic_show_attached_dev(struct device *dev,
 		return sprintf(buf, "DESKDOCK\n");
 	case ATTACHED_DEV_AUDIODOCK_MUIC:
 		return sprintf(buf, "AUDIODOCK\n");
-	case ATTACHED_DEV_PS_CABLE_MUIC:
-		return sprintf(buf, "PS CABLE\n");
 	default:
 		break;
 	}
@@ -1300,28 +1298,6 @@ static int set_vbus_interrupt(struct sm5502_muic_data *muic_data, int enable)
 	return ret;
 }
 
-static int attach_ps_cable(struct sm5502_muic_data *muic_data,
-			enum muic_attached_dev new_dev)
-{
-	int ret = 0;
-
-	pr_info("%s:%s new_dev(%d)\n", MUIC_DEV_NAME, __func__, new_dev);
-	com_to_open_with_vbus(muic_data);
-	ret = attach_charger(muic_data, new_dev);
-
-	return ret;
-}
-
-static int detach_ps_cable(struct sm5502_muic_data *muic_data)
-{
-	int ret = 0;
-
-	pr_info("%s:%s\n", MUIC_DEV_NAME, __func__);
-	ret = detach_charger(muic_data);
-
-	return ret;
-}
-
 static int attach_deskdock(struct sm5502_muic_data *muic_data,
 			enum muic_attached_dev new_dev, u8 vbvolt)
 {
@@ -1668,14 +1644,6 @@ static void sm5502_muic_handle_attach(struct sm5502_muic_data *muic_data,
 			ret = detach_deskdock(muic_data);
 		}
 		break;
-	case ATTACHED_DEV_PS_CABLE_MUIC:
-		if (new_dev != muic_data->attached_dev) {
-			pr_warn("%s:%s new(%d)!=attached(%d), assume detach\n",
-					MUIC_DEV_NAME, __func__, new_dev,
-					muic_data->attached_dev);
-			ret = detach_ps_cable(muic_data);
-		}
-		break;
 	case ATTACHED_DEV_UNKNOWN_VB_MUIC:
 		ret = detach_charger(muic_data);
 		break;
@@ -1714,9 +1682,6 @@ static void sm5502_muic_handle_attach(struct sm5502_muic_data *muic_data,
 		break;
 	case ATTACHED_DEV_DESKDOCK_MUIC:
 		ret = attach_deskdock(muic_data, new_dev, vbvolt);
-		break;
-	case ATTACHED_DEV_PS_CABLE_MUIC:
-		ret = attach_ps_cable(muic_data, new_dev);
 		break;
 	case ATTACHED_DEV_UNKNOWN_VB_MUIC:
 		com_to_open_with_vbus(muic_data);
@@ -1763,9 +1728,6 @@ static void sm5502_muic_handle_detach(struct sm5502_muic_data *muic_data)
 		break;
 	case ATTACHED_DEV_AUDIODOCK_MUIC:
 		ret = detach_audiodock(muic_data);
-		break;
-	case ATTACHED_DEV_PS_CABLE_MUIC:
-		ret = detach_ps_cable(muic_data);
 		break;
 	case ATTACHED_DEV_NONE_MUIC:
 		pr_info("%s:%s duplicated(NONE)\n", MUIC_DEV_NAME, __func__);
@@ -1951,13 +1913,6 @@ static void sm5502_muic_detect_dev(struct sm5502_muic_data *muic_data)
 #endif
 		new_dev = ATTACHED_DEV_AUDIODOCK_MUIC;
 		pr_info("%s : ADC AUDIODOCK DETECTED\n", MUIC_DEV_NAME);
-		break;
-	case ADC_PS_CABLE:
-#ifdef CONFIG_MUIC_SM5502_SUPPORT_PS_CABLE
-		intr = MUIC_INTR_ATTACH;
-#endif
-		new_dev = ATTACHED_DEV_PS_CABLE_MUIC;
-		pr_info("%s : PS_CABLE DETECTED\n", MUIC_DEV_NAME);
 		break;
 	case ADC_OPEN:
 		/* sometimes muic fails to catch JIG_UART_OFF detaching */

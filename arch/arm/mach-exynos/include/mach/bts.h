@@ -18,12 +18,6 @@ void bts_initialize(const char *pd_name, bool on);
 #define bts_initialize(a, b) do {} while (0)
 #endif
 
-#if defined(CONFIG_EXYNOS4415_BTS)
-void set_mfc_scen(bool enable);
-#else
-#define set_mfc_scen(a) do () while (0)
-#endif
-
 #ifdef CONFIG_EXYNOS5410_BTS
 #include <mach/devfreq.h>
 

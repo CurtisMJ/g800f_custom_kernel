@@ -1,4 +1,3 @@
-/* Copyright (c) 2015 Samsung Electronics Co., Ltd. */
 /*
  *	Definitions for the 'struct sk_buff' memory handlers.
  *
@@ -10,14 +9,6 @@
  *	modify it under the terms of the GNU General Public License
  *	as published by the Free Software Foundation; either version
  *	2 of the License, or (at your option) any later version.
- */
-/*
- *  Changes:
- *  KwnagHyun Kim <kh0304.kim@samsung.com> 2015/07/08
- *  Baesung Park  <baesung.park@samsung.com> 2015/07/08
- *  Vignesh Saravanaperumal <vignesh1.s@samsung.com> 2015/07/08
- *    Add codes to share UID/PID information
- *
  */
 
 #ifndef _LINUX_SKBUFF_H
@@ -275,11 +266,6 @@ struct skb_shared_info {
 	/* Intermediate layers must ensure that destructor_arg
 	 * remains valid until skb destructor */
 	void *		destructor_arg;
-// ------------- START of KNOX_VPN ------------------//
-	uid_t uid;
-	pid_t pid;
-	u_int32_t knox_mark;
-// ------------- END of KNOX_VPN -------------------//
 
 	/* must be last field, see pskb_expand_head() */
 	skb_frag_t	frags[MAX_SKB_FRAGS];
@@ -530,7 +516,7 @@ struct sk_buff {
  */
 static inline struct dst_entry *skb_dst(const struct sk_buff *skb)
 {
-	/* If refdst was not refcounted, check we still are in a
+	/* If refdst was not refcounted, check we still are in a 
 	 * rcu_read_lock section
 	 */
 	WARN_ON((skb->_skb_refdst & SKB_DST_NOREF) &&
@@ -1987,7 +1973,7 @@ static inline int skb_cow_head(struct sk_buff *skb, unsigned int headroom)
  *	is untouched. Otherwise it is extended. Returns zero on
  *	success. The skb is freed on error.
  */
-
+ 
 static inline int skb_padto(struct sk_buff *skb, unsigned int len)
 {
 	unsigned int size = skb->len;

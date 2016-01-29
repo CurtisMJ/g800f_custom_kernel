@@ -17,7 +17,6 @@
 #include <linux/platform_device.h>
 
 #include <plat/cpu.h>
-#include <mach/bts.h>
 
 #include "s5p_mfc_common.h"
 #include "s5p_mfc_debug.h"
@@ -307,9 +306,7 @@ int s5p_mfc_clock_on(void)
 	unsigned long flags;
 
 #ifdef CONFIG_MFC_USE_BUS_DEVFREQ
-	mutex_lock(&dev->curr_rate_lock);
 	s5p_mfc_clock_set_rate(dev, dev->curr_rate);
-	mutex_unlock(&dev->curr_rate_lock);
 #endif
 	ret = clk_enable(pm->clock);
 	if (ret < 0)
@@ -386,9 +383,6 @@ int s5p_mfc_power_on(void)
 {
 	atomic_set(&pm->power, 1);
 
-#if defined(CONFIG_SOC_EXYNOS4415)
-	set_mfc_scen(1);
-#endif
 	return pm_runtime_get_sync(pm->device);
 }
 
@@ -396,9 +390,6 @@ int s5p_mfc_power_off(void)
 {
 	atomic_set(&pm->power, 0);
 
-#if defined(CONFIG_SOC_EXYNOS4415)
-	set_mfc_scen(0);
-#endif
 	return pm_runtime_put_sync(pm->device);
 }
 

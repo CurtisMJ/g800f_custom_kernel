@@ -494,9 +494,13 @@ int rt5033_chg_fled_init(struct i2c_client *client)
 		pr_info("rt5033 chg: is_750k_switching = %d, is_fixed_switching = %d\n",
 				is_750k_switching, is_fixed_switching);
 	}
-	rev_id = chip->rev_id;
-
-	pr_err("%s : rev_id = %d \n", __func__,rev_id );
+	rt5033_set_bits(client, 0x6b, 0x01);
+	msleep(20); // delay 100 us to wait for normal read (from e-fuse)
+	ret = rt5033_reg_read(client, 0x03);
+	rt5033_clr_bits(client, 0x6b, 0x01);
+	if (ret < 0)
+		pr_err("%s : failed to read revision ID\n", __func__);
+	rev_id = ret & 0x0f;
 	if (rev_id >= 4) {
 		if (charger) {
 			if (is_fixed_switching)
@@ -521,8 +525,6 @@ int rt5033_chg_fled_init(struct i2c_client *client)
 		ret = rt5033_set_bits(client, RT5033_CHG_CTRL1,
 				RT5033_SEL_SWFREQ_MASK);
 	}
-	rt5033_workaround(chip);
-
 rt5033_chg_fled_init_exit:
 	return ret;
 }

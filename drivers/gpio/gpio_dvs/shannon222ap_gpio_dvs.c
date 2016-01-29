@@ -467,7 +467,7 @@ static void check_gpio_status(unsigned char phonestate)
 
 	for (i = 0; i < AP_GPIO_COUNT; i++) {
 		gpio = exynos4_gpio_num[i];
-#ifdef CONFIG_MACH_KMINI
+#ifndef CONFIG_MACH_GARDA
 		if ((gpio >= EXYNOS4_GPZ(0)) && (gpio <= EXYNOS4_GPZ(6)))
                         temp_io = 0x01, temp_pupd = 0x01, temp_lh = 0x0; /*IN/PD/L*/
                 else

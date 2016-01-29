@@ -25,8 +25,6 @@
 #endif
 
 struct class *sensors_class;
-static struct device *sensor_dev;
-static struct input_dev *meta_input_dev;
 
 #ifdef CONFIG_SENSOR_USE_SYMLINK
 struct class *event_class;
@@ -200,30 +198,6 @@ void sensors_delete_symlink(struct input_dev *input_dev)
 EXPORT_SYMBOL_GPL(sensors_delete_symlink);
 #endif
 
-static ssize_t set_flush(struct device *dev, struct device_attribute *attr,
-	const char *buf, size_t size)
-{
-
-	u8 sensor_type = 0;
-
-	if (kstrtou8(buf, 10, &sensor_type) < 0)
-		return -EINVAL;
-
-	input_report_rel(meta_input_dev, REL_DIAL, 1);
-	input_report_rel(meta_input_dev, REL_HWHEEL, sensor_type + 1);
-	input_sync(meta_input_dev);
-
-	pr_info("[SENSOR] flush %d", sensor_type);
-	return size;
-}
-
-static DEVICE_ATTR(flush, S_IWUSR | S_IWGRP, NULL, set_flush);
-
-static struct device_attribute *sensor_attr[] = {
-	&dev_attr_flush,
-	NULL,
-};
-
 int sensors_register(struct device *dev, void *drvdata,
 		     struct device_attribute *attributes[], char *name)
 {
@@ -264,43 +238,6 @@ void sensors_unregisters(struct device *dev, struct device_attribute *attributes
 }
 EXPORT_SYMBOL_GPL(sensors_unregisters);
 
-int sensors_input_init(void)
-{
-	int ret;
-
-	/* Meta Input Event Initialization */
-	meta_input_dev = input_allocate_device();
-	if (!meta_input_dev) {
-		pr_err("[SENSOR CORE] failed alloc meta dev\n");
-		return -ENOMEM;
-	}
-
-	meta_input_dev->name = "meta_event";
-	input_set_capability(meta_input_dev, EV_REL, REL_HWHEEL);
-	input_set_capability(meta_input_dev, EV_REL, REL_DIAL);
-
-	ret = input_register_device(meta_input_dev);
-	if (ret < 0) {
-		pr_err("[SENSOR CORE] failed register meta dev\n");
-		input_free_device(meta_input_dev);
-	}
-
-	ret = sensors_initialize_symlink(meta_input_dev);
-	if (ret < 0) {
-		pr_err("[SENSOR CORE] failed create meta symlink\n");
-		input_unregister_device(meta_input_dev);
-	}
-
-	return ret;
-}
-
-void sensors_input_clean(void)
-{
-	sensors_delete_symlink(meta_input_dev);
-	input_unregister_device(meta_input_dev);
-}
-
-
 static int __init sensors_class_init(void)
 {
 	sensors_class = class_create(THIS_MODULE, "sensors");
@@ -308,21 +245,6 @@ static int __init sensors_class_init(void)
 		pr_err("Failed to create class(sensors)!\n");
 		return PTR_ERR(sensors_class);
 	}
-
-		/* For flush sysfs */
-	sensor_dev = device_create(sensors_class, NULL, 0, NULL,
-		"%s", "sensor_dev");
-	if (IS_ERR(sensor_dev)) {
-		pr_err("[SENSORS CORE] sensor_dev create failed![%ld]\n",
-			IS_ERR(sensor_dev));
-
-		class_destroy(sensors_class);
-		return PTR_ERR(sensor_dev);
-	} else {
-		if ((device_create_file(sensor_dev, *sensor_attr)) < 0)
-			pr_err("[SENSOR CORE] failed flush device_file\n");
-	}
-
 #ifdef CONFIG_SENSOR_USE_SYMLINK
 	event_class = class_create(THIS_MODULE, "sensor_event");
 
@@ -335,15 +257,12 @@ static int __init sensors_class_init(void)
 		return PTR_ERR(event_dev);
 	}
 #endif
-	sensors_input_init();
+
 	return 0;
 }
 
 static void __exit sensors_class_exit(void)
 {
-	if (meta_input_dev)
-		sensors_input_clean();
-
 	class_destroy(sensors_class);
 #ifdef CONFIG_SENSOR_USE_SYMLINK
 	class_destroy(event_class);

@@ -24,7 +24,6 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_DUAL_CAMCORDING);
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_DUAL_PREVIEW);
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_HIGH_SPEED_FPS);
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_FHD);
-DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_WHD);
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_UHD);
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_PREVIEW_FHD);
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_PREVIEW_WHD);
@@ -58,10 +57,6 @@ static struct fimc_is_dvfs_scenario static_scenarios[] = {
 		.scenario_id		= FIMC_IS_SN_REAR_CAMCORDING_FHD,
 		.scenario_nm		= DVFS_SN_STR(FIMC_IS_SN_REAR_CAMCORDING_FHD),
 		.check_func		= GET_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_FHD),
-	}, {
-		.scenario_id		= FIMC_IS_SN_REAR_CAMCORDING_WHD,
-		.scenario_nm		= DVFS_SN_STR(FIMC_IS_SN_REAR_CAMCORDING_WHD),
-		.check_func		= GET_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_WHD),
 	}, {
 		.scenario_id		= FIMC_IS_SN_REAR_CAMCORDING_UHD,
 		.scenario_nm		= DVFS_SN_STR(FIMC_IS_SN_REAR_CAMCORDING_UHD),
@@ -244,23 +239,6 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_FHD)
 		return 0;
 }
 
-/* rear camcording WHD*/
-DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_WHD)
-{
-	u32 mask = (device->setfile & FIMC_IS_SETFILE_MASK);
-	bool setfile_flag = (mask == ISS_SUB_SCENARIO_VIDEO) ||
-			(mask == ISS_SUB_SCENARIO_VIDEO_WDR);
-
-	if ((device->sensor->pdev->id == SENSOR_POSITION_REAR) &&
-			(fimc_is_sensor_g_framerate(device->sensor) <= 30) &&
-			(device->chain3_width * device->chain3_height > SIZE_FHD) &&
-			(device->chain3_width * device->chain3_height <= SIZE_WHD) &&
-			setfile_flag)
-		return 1;
-	else
-		return 0;
-}
-
 /* rear camcording UHD*/
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_UHD)
 {
@@ -270,7 +248,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_CAMCORDING_UHD)
 
 	if ((device->sensor->pdev->id == SENSOR_POSITION_REAR) &&
 			(fimc_is_sensor_g_framerate(device->sensor) <= 30) &&
-			(device->chain3_width * device->chain3_height > SIZE_WHD) &&
+			(device->chain3_width * device->chain3_height > SIZE_FHD) &&
 			(device->chain3_width * device->chain3_height <= SIZE_UHD) &&
 			setfile_flag)
 		return 1;

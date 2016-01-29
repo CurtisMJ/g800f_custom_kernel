@@ -338,13 +338,11 @@ int fimc_is_companion_open(struct fimc_is_device_companion *device)
 	device->companion_status = FIMC_IS_COMPANION_OPENNING;
 #if defined(CONFIG_PM_RUNTIME)
 	pm_runtime_get_sync(&device->pdev->dev);
-#else
-	fimc_is_companion_runtime_resume(&device->pdev->dev);
 #endif
 	ret = fimc_is_sec_fw_sel(core, &device->pdev->dev, fw_name, setf_name, 0);
 	if (ret < 0) {
 		err("failed to select firmware (%d)", ret);
-		goto p_err_pm;
+		goto p_err;
 	}
 
 	ret = fimc_is_sec_concord_fw_sel(core, &device->pdev->dev, companion_fw_name, master_setf_name, mode_setf_name, 0);
@@ -363,7 +361,7 @@ int fimc_is_companion_open(struct fimc_is_device_companion *device)
 		ret = fimc_is_comp_loadfirm(core);
 		if (ret) {
 			err("fimc_is_comp_loadfirm() fail");
-			goto p_err_pm;
+			goto p_err;
                 }
 		ret = fimc_is_comp_loadcal(core);
 		if (ret) {
@@ -374,7 +372,7 @@ int fimc_is_companion_open(struct fimc_is_device_companion *device)
 		ret = fimc_is_comp_loadsetf(core);
 		if (ret) {
 			err("fimc_is_comp_loadsetf() fail");
-			goto p_err_pm;
+			goto p_err;
 		}
 	}
 
@@ -397,18 +395,8 @@ int fimc_is_companion_open(struct fimc_is_device_companion *device)
 	device->companion_status = FIMC_IS_COMPANION_OPENDONE;
 	fimc_is_companion_wakeup(device);
 
-	info("[COMP:D] %s(%d)status(%d)\n", __func__, ret, device->companion_status);
-	return ret;
-
-p_err_pm:
-#if defined(CONFIG_PM_RUNTIME)
-	pm_runtime_put_sync(&device->pdev->dev);
-#else
-	fimc_is_companion_runtime_suspend(&device->pdev->dev);
-#endif
-
 p_err:
-	err("[COMP:D] open fail(%d)status(%d)", ret, device->companion_status);
+	info("[COMP:D] %s(%d)status(%d)\n", __func__, ret,device->companion_status);
 	return ret;
 }
 
@@ -426,8 +414,6 @@ int fimc_is_companion_close(struct fimc_is_device_companion *device)
 
 #if defined(CONFIG_PM_RUNTIME)
 	pm_runtime_put_sync(&device->pdev->dev);
-#else
-	fimc_is_companion_runtime_suspend(&device->pdev->dev);
 #endif
 
 	clear_bit(FIMC_IS_COMPANION_OPEN, &device->state);
