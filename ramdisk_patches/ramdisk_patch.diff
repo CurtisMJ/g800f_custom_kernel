@@ -1,3 +1,18 @@
+diff -urN old_rd/init.rc model_rd/init.rc
+--- old_rd/init.rc	2015-11-11 22:01:38.063710122 +0200
++++ model_rd/init.rc	2015-11-11 22:04:02.073706533 +0200
+@@ -982,5 +982,11 @@
+     oneshot
+ # end of BT
+ 
++service user-init /system/bin/sh /sbin/initd.sh
++    class main
++    user root
++    oneshot
++
+ on property:sys.boot_completed=1
+     write /sys/block/mmcblk0/queue/scheduler cfq
++    start user-init
 diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_direc model_rd/res/uci_p/actions/boefflasnd_dac_direc
 --- old_rd/res/uci_p/actions/boefflasnd_dac_direc	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_dac_direc	2015-11-11 22:04:02.073706533 +0200
