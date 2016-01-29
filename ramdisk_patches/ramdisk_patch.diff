@@ -1246,6 +1246,18 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +      },
 +	]
 +}
+diff -urN old_rd/sbin/initd.sh model_rd/sbin/initd.sh
+--- old_rd/sbin/initd.sh	1970-01-01 02:00:00.000000000 +0200
++++ model_rd/sbin/initd.sh	2015-11-11 22:04:02.073706533 +0200
+@@ -0,0 +1,8 @@
++#!/system/bin/sh 
++export PATH=${PATH}:/system/bin:/system/xbin 
++mount -o remount rw /system 
++chmod 777 /system/etc/init.d/* 
++mount -o remount ro /system 
++for FILE in /system/etc/init.d/*; do 
++  sh $FILE 
++done
 diff -urN old_rd/sbin/uci model_rd/sbin/uci
 --- old_rd/sbin/uci	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/sbin/uci	2015-11-11 22:04:02.073706533 +0200
