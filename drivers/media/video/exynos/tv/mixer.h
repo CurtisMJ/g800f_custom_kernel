@@ -66,6 +66,10 @@
 #define MXR_PAD_SOURCE_GRP1	5
 #define MXR_PADS_NUM		6
 
+/* mixer device ID for smc call */
+#define MXR_SMC_PROTECTION_ID	8
+#define SMC_PROTECTION_SET  0x81000000
+
 /* mixer virtual address limitation */
 #define MXR_VA		0x10000000
 
@@ -285,6 +289,8 @@ struct mxr_layer {
 	u32 chroma_val;
 	/** priority for each layer */
 	u8 prio;
+	/** protect for DRM scenario */
+	int protection;
 };
 
 /** description of mixers output interface */
@@ -419,8 +425,9 @@ struct mxr_device {
 
 	/** RGB Quantization range and Colorimetry */
 	enum s5p_mixer_rgb color_range;
-	/** TV suspend */
-	int blank;
+
+	/** protection count */
+	int protection;
 };
 
 #if defined(CONFIG_VIDEOBUF2_CMA_PHYS)
@@ -562,6 +569,7 @@ void mxr_reg_s_output(struct mxr_device *mdev, int cookie);
 void mxr_reg_streamon(struct mxr_device *mdev);
 void mxr_reg_streamoff(struct mxr_device *mdev);
 int mxr_reg_wait4update(struct mxr_device *mdev);
+int mxr_hdmi_blank(struct mxr_device *mdev, int blank);
 void mxr_reg_set_mbus_fmt(struct mxr_device *mdev,
 	struct v4l2_mbus_framefmt *fmt, u32 dvi_mode);
 void mxr_reg_local_path_set(struct mxr_device *mdev);

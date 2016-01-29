@@ -62,7 +62,8 @@ enum fimc_is_sensor_output_entity {
 
 enum fimc_is_sensor_force_stop {
 	FIMC_IS_BAD_FRAME_STOP = 0,
-	FIMC_IS_MIF_THROTTLING_STOP = 1
+	FIMC_IS_MIF_THROTTLING_STOP = 1,
+	FIMC_IS_FLITE_OVERFLOW_STOP = 2
 };
 
 struct fimc_is_sensor_cfg {

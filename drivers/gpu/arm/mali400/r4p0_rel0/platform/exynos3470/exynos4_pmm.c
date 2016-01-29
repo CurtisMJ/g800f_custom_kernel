@@ -70,11 +70,11 @@ static struct pm_qos_request mif_min_qos;
 #define MALI_DVFS_STEPS 5
 #define MALI_DVFS_STEPS_ISP 4
 #define MALI_DVFS_WATING 10 /* msec */
-#define MALI_DVFS_DEFAULT_STEP 1
+#define MALI_DVFS_DEFAULT_STEP 0
 #define MALI_DVFS_DEFAULT_STEP_ISP 3
 
 #define MALI_DVFS_CLK_DEBUG 0
-#define CPUFREQ_LOCK_DURING_440 1
+#define CPUFREQ_LOCK_DURING_440 0
 
 static int bMaliDvfsRun = 0;
 
@@ -172,6 +172,8 @@ mali_dvfs_table mali_dvfs_isp[MALI_DVFS_STEPS_ISP] = {
 int mali_gpu_clk = 160;
 int mali_gpu_vol = 850000;
 unsigned int mali_vpll_clk = 900;
+int mali_min_freq;
+int mali_max_freq;
 char *mali_freq_table = "533 440 340 266 160";
 #define EXTXTALCLK_NAME  "ext_xtal"
 #define VPLLSRCCLK_NAME  "vpll_src"
@@ -204,6 +206,8 @@ mali_io_address clk_register_map = 0;
 /* export GPU frequency as a read-only parameter so that it can be read in /sys */
 module_param(mali_gpu_clk, int, S_IRUSR | S_IRGRP | S_IROTH);
 module_param(mali_gpu_vol, int, S_IRUSR | S_IRGRP | S_IROTH);
+module_param(mali_min_freq, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+module_param(mali_max_freq, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 module_param(mali_freq_table, charp, S_IRUSR | S_IRGRP | S_IROTH);
 #ifdef CONFIG_MALI_DVFS
 module_param(mali_dvfs_control, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP| S_IROTH); /* rw-rw-r-- */
@@ -218,6 +222,8 @@ int *def_volt_table;
 void store_default_volts(void);
 MODULE_PARM_DESC(mali_gpu_clk, "Mali Current Clock");
 MODULE_PARM_DESC(mali_gpu_vol, "Mali Current Voltage");
+MODULE_PARM_DESC(mali_min_freq, "Mali Min frequency lock");
+MODULE_PARM_DESC(mali_max_freq, "Mali Max frequency lock");
 MODULE_PARM_DESC(mali_freq_table, "Mali frequency table");
 
 #ifdef CONFIG_REGULATOR
@@ -658,27 +664,79 @@ static mali_bool change_mali_dvfs_status(u32 step, mali_bool boostup )
 
 static unsigned int decideNextStatus(unsigned int utilization)
 {
-	static unsigned int level = 0;
+	unsigned int level = get_mali_dvfs_status();
+	unsigned int max_level = MALI_DVFS_STEPS - 1;
+	unsigned int min_level = 0;
 	int iStepCount = 0;
 
 	if (ENABLE_LOCK_BY_ISP) {
-		if (level >= MALI_DVFS_STEPS_ISP)
-			level--;
+		if (level != mali_isp_current_level) {
+			level = mali_isp_current_level;
+			set_mali_dvfs_current_step(mali_isp_current_level);
+		}
 
-		if (utilization > (int)(255 * mali_dvfs_isp[maliDvfsStatus.currentStep].upthreshold / 100) &&
+		if (utilization > (int)(256 * mali_dvfs_isp[mali_isp_current_level].upthreshold / 100) &&
 				level < MALI_DVFS_STEPS_ISP - 1) {
 			level++;
-		} else if (utilization < (int)(255 * mali_dvfs_isp[maliDvfsStatus.currentStep].downthreshold / 100) &&
+		} else if (utilization < (int)(256 * mali_dvfs_isp[mali_isp_current_level].downthreshold / 100) &&
 			level > 0) {
 			level--;
 		}
 		return level;
 	} else if (mali_dvfs_control == 0) {
-		if (utilization > (int)(255 * mali_dvfs_isp[maliDvfsStatus.currentStep].upthreshold / 100) &&
-				level < MALI_DVFS_STEPS - 1) {
+		if (mali_min_freq != 0 && mali_max_freq != 0) {
+			if (mali_min_freq > mali_max_freq) {
+				for (iStepCount = MALI_DVFS_STEPS - 1; iStepCount >= 0; iStepCount--) {
+					if (mali_max_freq >= mali_dvfs[iStepCount].clock) {
+						max_level = iStepCount;
+						min_level = iStepCount;
+						level = max_level;
+						break;
+					}
+				}
+			} else {
+				for (iStepCount = MALI_DVFS_STEPS - 1; iStepCount >= 0; iStepCount--) {
+					if (mali_min_freq >= mali_dvfs[iStepCount].clock) {
+						min_level = iStepCount;
+						if (level < min_level)
+							level = min_level;
+						break;
+					}
+				}
+				for (iStepCount = MALI_DVFS_STEPS - 1; iStepCount >= 0; iStepCount--) {
+					if (mali_max_freq >= mali_dvfs[iStepCount].clock) {
+						max_level = iStepCount;
+						if (level > max_level)
+							level = max_level;
+						break;
+					}
+				}
+			}
+		} else if (mali_min_freq != 0) {
+			for (iStepCount = MALI_DVFS_STEPS - 1; iStepCount >= 0; iStepCount--) {
+				if (mali_min_freq >= mali_dvfs[iStepCount].clock) {
+					min_level = iStepCount;
+					if (level < min_level)
+						level = min_level;
+					break;
+				}
+			}
+		} else if (mali_max_freq != 0) {
+			for (iStepCount = MALI_DVFS_STEPS - 1; iStepCount >= 0; iStepCount--) {
+				if (mali_max_freq >= mali_dvfs[iStepCount].clock) {
+					max_level = iStepCount;
+					if (level > max_level)
+						level = max_level;
+					break;
+				}
+			}
+		}
+
+		if (utilization > (int)(256 * mali_dvfs[maliDvfsStatus.currentStep].upthreshold / 100) &&
+			level < max_level) {
 			level++;
-		} else if (utilization < (int)(255 * mali_dvfs[maliDvfsStatus.currentStep].downthreshold / 100) &&
-			level > 0) {
+		} else if (utilization < (int)(256 * mali_dvfs[maliDvfsStatus.currentStep].downthreshold / 100) &&
+			level > min_level) {
 			level--;
 		}
 	} else {
@@ -702,8 +760,8 @@ static mali_bool mali_dvfs_status(unsigned int utilization)
 	MALI_DEBUG_PRINT(4, ("> mali_dvfs_status: %d \n", utilization));
 
 	/* decide next step */
-	curStatus = get_mali_dvfs_status();
 	nextStatus = decideNextStatus(utilization);
+	curStatus = get_mali_dvfs_status();
 
 	MALI_DEBUG_PRINT(4, ("= curStatus %d, nextStatus %d\n", curStatus, nextStatus));
 	/* if next status is same with current status, don't change anything */
@@ -716,7 +774,7 @@ static mali_bool mali_dvfs_status(unsigned int utilization)
 			stay_count--;
 		}
 
-		if (boostup == 1 || stay_count <= 0) {
+		if (boostup == 1 || stay_count <= 0 || ENABLE_LOCK_BY_ISP) {
 			/*change mali dvfs status*/
 			update_time_in_state(curStatus);
 			if (!change_mali_dvfs_status(nextStatus, boostup)) {
@@ -1240,6 +1298,7 @@ int mali_dvfs_level_lock(void)
 
 	ENABLE_LOCK_BY_ISP = 1;
 	mali_isp_current_clock = mali_dvfs_isp[MALI_DVFS_DEFAULT_STEP_ISP].clock;
+	mali_isp_current_level = MALI_DVFS_DEFAULT_STEP_ISP;
 #ifdef CONFIG_REGULATOR
 	if (IS_ERR_OR_NULL(g3d_regulator)) {
 		MALI_DEBUG_PRINT(1, ("error on mali_regulator_set_voltage : g3d_regulator is null\n"));
@@ -1305,6 +1364,7 @@ int mali_dvfs_level_unlock(void)
 		_mali_osk_mutex_wait(mali_isp_lock);
 		ENABLE_LOCK_BY_ISP = 0;
 		mali_isp_current_level = 0;
+		mali_gpu_clk = 160;
 		MALI_DEBUG_PRINT(1, ("DVFS lock is released ISP\n"));
 		_mali_osk_mutex_signal(mali_isp_lock);
 	}

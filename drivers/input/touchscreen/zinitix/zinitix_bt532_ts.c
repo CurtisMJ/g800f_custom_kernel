@@ -4092,6 +4092,11 @@ static int init_sec_factory(struct bt532_ts_info *info)
 		goto err_create_sysfs;
 	}
 
+	ret = sysfs_create_link(&factory_ts_dev->kobj, &info->input_dev->dev.kobj,"input");
+	if (ret < 0) {
+		tsp_debug_err(true, &info->client->dev, "Failed to create input symbolic link\n");
+	}
+
 #ifdef SUPPORTED_TOUCH_KEY
 	ret = sysfs_create_group(&factory_tk_dev->kobj, &touchkey_attr_group);
 	if (unlikely(ret)) {

@@ -1329,8 +1329,8 @@ static int check_unsafe_exec(struct linux_binprm *bprm)
 	return res;
 }
 
-/*
- * Fill the binprm structure from the inode.
+/* 
+ * Fill the binprm structure from the inode. 
  * Check permissions, then read the first 128 (BINPRM_BUF_SIZE) bytes
  *
  * This may be called multiple times for binary chains (scripts for example).

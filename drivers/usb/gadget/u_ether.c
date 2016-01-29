@@ -331,13 +331,32 @@ static void rx_complete(struct usb_ep *ep, struct usb_request *req)
 		while (skb2) {
 			if (status < 0
 					|| ETH_HLEN > skb2->len
-					|| skb2->len > ETH_FRAME_LEN) {
+					|| skb2->len > VLAN_ETH_FRAME_LEN) {
+#ifdef CONFIG_USB_NCM_SUPPORT_MTU_CHANGE
+				/*
+					Need to revisit net->mtu  does not include header size incase of changed MTU
+				*/
+				if(!strcmp(dev->port_usb->func.name,"ncm")) {
+					if (status < 0
+						|| ETH_HLEN > skb2->len
+						|| skb2->len > (dev->net->mtu + ETH_HLEN)) {
+						printk(KERN_DEBUG "usb: %s  drop incase of NCM rx length %d\n",__func__,skb2->len);
+					} else {
+						printk(KERN_DEBUG "usb: %s  Dont drop incase of NCM rx length %d\n",__func__,skb2->len);
+						goto process_frame;
+					}
+				}
+				printk(KERN_DEBUG "usb: %s Drop rx length %d\n",__func__,skb2->len);
+#endif
 				dev->net->stats.rx_errors++;
 				dev->net->stats.rx_length_errors++;
 				DBG(dev, "rx length %d\n", skb2->len);
 				dev_kfree_skb_any(skb2);
 				goto next_frame;
 			}
+#ifdef CONFIG_USB_NCM_SUPPORT_MTU_CHANGE
+process_frame:
+#endif
 			skb2->protocol = eth_type_trans(skb2, dev->net);
 			dev->net->stats.rx_packets++;
 			dev->net->stats.rx_bytes += skb2->len;
@@ -573,12 +592,35 @@ static void process_rx_w(struct work_struct *work)
 		if (status < 0
 				|| ETH_HLEN > skb->len
 				|| skb->len > ETH_FRAME_LEN) {
+#ifdef CONFIG_USB_NCM_SUPPORT_MTU_CHANGE
+		/*
+		  Need to revisit net->mtu	does not include header size incase of changed MTU
+		*/
+			if(!strcmp(dev->port_usb->func.name,"ncm")) {
+				if (status < 0
+					|| ETH_HLEN > skb->len
+					|| skb->len > (dev->net->mtu + ETH_HLEN)) {
+					printk(KERN_ERR "usb: %s  drop incase of NCM rx length %d\n",__func__,skb->len);
+				} else {
+					printk(KERN_ERR "usb: %s  Dont drop incase of NCM rx length %d\n",__func__,skb->len);
+					goto process_frame;
+				}
+			}
+#endif
 			dev->net->stats.rx_errors++;
 			dev->net->stats.rx_length_errors++;
+#ifndef CONFIG_USB_NCM_SUPPORT_MTU_CHANGE
+			DBG(dev, "rx length %d\n", skb->len);
+#else
+			printk(KERN_DEBUG "usb: %s Drop rx length %d\n",__func__,skb->len);
+#endif
 			DBG(dev, "rx length %d\n", skb->len);
 			dev_kfree_skb_any(skb);
 			continue;
 		}
+#ifdef CONFIG_USB_NCM_SUPPORT_MTU_CHANGE
+process_frame:
+#endif
 		skb->protocol = eth_type_trans(skb, dev->net);
 		dev->net->stats.rx_packets++;
 		dev->net->stats.rx_bytes += skb->len;
@@ -661,6 +703,9 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 	default:
 		dev->net->stats.tx_errors++;
 		VDBG(dev, "tx err %d\n", req->status);
+#ifdef CONFIG_USB_NCM_SUPPORT_MTU_CHANGE
+		printk(KERN_ERR"usb:%s tx err %d\n",__func__, req->status);
+#endif
 		/* FALLTHROUGH */
 	case -ECONNRESET:		/* unlink */
 	case -ESHUTDOWN:		/* disconnect etc */

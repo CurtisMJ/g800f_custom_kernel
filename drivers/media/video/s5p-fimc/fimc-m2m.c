@@ -159,6 +159,7 @@ static void fimc_device_run(void *priv)
 	}
 
 	if (ctx->state & FIMC_PARAMS) {
+		fimc_hw_reset(fimc);
 		fimc_set_yuv_order(ctx);
 		fimc_hw_set_input_path(ctx);
 		fimc_hw_set_in_dma(ctx);

@@ -197,19 +197,13 @@ struct fimc_is_device_ischain {
 	u32					bds_width;
 	u32					bds_height;
 	u32					setfile;
-	u32					scp_setfile;
+	u32					color_range;
 
 	struct camera2_sm			capability;
 	struct camera2_uctl			cur_peri_ctl;
 	struct camera2_uctl			peri_ctls[SENSOR_MAX_CTL];
 
-	/*fimc bns*/
-	u32					bns_width;
-	u32					bns_height;
-
 	/*isp margin*/
-	u32					sensor_width;
-	u32					sensor_height;
 	u32					margin_left;
 	u32					margin_right;
 	u32					margin_width;
@@ -383,7 +377,7 @@ int fimc_is_itf_force_stop(struct fimc_is_device_ischain *device,
 int fimc_is_itf_map(struct fimc_is_device_ischain *device,
 	u32 group, u32 shot_addr, u32 shot_size);
 int fimc_is_itf_i2c_lock(struct fimc_is_device_ischain *this,
-			int i2c_clk, bool lock);
+	int i2c_clk, bool lock);
 
 extern const struct fimc_is_queue_ops fimc_is_ischain_3aa_ops;
 extern const struct fimc_is_queue_ops fimc_is_ischain_isp_ops;

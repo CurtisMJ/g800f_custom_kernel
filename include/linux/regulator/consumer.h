@@ -144,6 +144,9 @@ void devm_regulator_put(struct regulator *regulator);
 int regulator_enable(struct regulator *regulator);
 int regulator_disable(struct regulator *regulator);
 int regulator_force_disable(struct regulator *regulator);
+#ifdef CONFIG_MFD_RT5033_RESET_WA
+int regulator_get_status(struct regulator * regulator);
+#endif
 int regulator_is_enabled(struct regulator *regulator);
 int regulator_disable_deferred(struct regulator *regulator, int ms);
 

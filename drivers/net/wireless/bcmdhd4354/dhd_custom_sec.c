@@ -86,6 +86,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"MT", "MT", 1},
 	{"NL", "NL", 1},
 	{"NO", "NO", 1},
+	{"PG", "AU", 2},
 	{"PL", "PL", 1},
 	{"PT", "PT", 1},
 	{"PY", "PY", 1},

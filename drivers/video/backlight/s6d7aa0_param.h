@@ -78,7 +78,8 @@ static const unsigned char SEQ_PORCH_CTL[] = {
 
 static const unsigned char SEQ_BL_ON_CTL[] = {
 	0xC3,
-	0x3B, 0x00, 0x2A
+	//0x3B, 0x00, 0x2A // 14khz
+	0xA7, 0x00, 0x2A   //changed pwm freq to 20khz 
 };
 
 static const unsigned char SEQ_BL_OFF_CTL[] = {

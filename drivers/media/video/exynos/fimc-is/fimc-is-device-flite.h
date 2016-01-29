@@ -101,6 +101,9 @@ struct fimc_is_device_flite {
 	struct workqueue_struct		*early_workqueue;
 	struct delayed_work		early_work_wq;
 	void				(*chk_early_buf_done)(struct fimc_is_device_flite *flite, u32 framerate, u32 position);
+
+	/* pointer address from device sensor */
+	struct v4l2_subdev		**subdev;
 };
 
 int fimc_is_flite_probe(struct fimc_is_device_sensor *device,

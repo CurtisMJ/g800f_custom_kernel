@@ -55,6 +55,12 @@ config CAMERA_SENSOR_2P2_OBJ
         default n
         help
           Use to build 2P2 camera sensor.
+config CAMERA_SENSOR_2P2_12M_OBJ
+        bool "Use 2P2_12M camera sensor"
+        depends on VIDEO_EXYNOS_FIMC_IS
+        default n
+        help
+          Use to build 2P2_12M camera sensor.
 config CAMERA_SENSOR_3H5_OBJ
         bool "Use 3H5 camera sensor"
         depends on VIDEO_EXYNOS_FIMC_IS

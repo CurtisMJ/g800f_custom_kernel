@@ -1,7 +1,7 @@
 /*
  * Broadcom AMBA Interconnect definitions.
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: aidmp.h 385510 2013-02-15 21:02:07Z $
+ * $Id: aidmp.h 531050 2015-02-02 07:21:19Z $
  */
 
 #ifndef	_AIDMP_H
@@ -58,6 +58,7 @@
 #define	ER_ADD			4
 #define	ER_END			0xe
 #define	ER_BAD			0xffffffff
+#define	ER_SZ_MAX		4096 /* 4KB */
 
 /* EROM CompIdentA */
 #define	CIA_MFG_MASK		0xfff00000

@@ -97,7 +97,7 @@ static int fimc_is_vdc_video_open(struct file *file)
 	info("[VDC:V:%d] %s\n", vctx->instance, __func__);
 
 	refcount = atomic_read(&core->video_isp.refcount);
-	if (refcount > FIMC_IS_MAX_NODES) {
+	if (refcount > FIMC_IS_MAX_NODES || refcount < 1) {
 		err("invalid ischain refcount(%d)", refcount);
 		close_vctx(file, video, vctx);
 		ret = -EINVAL;

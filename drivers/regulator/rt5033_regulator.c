@@ -23,6 +23,8 @@
 
 #define ALIAS_NAME "rt5033-regulator"
 
+#define RT5033A_REV	6
+#define EN_DCDC_FORCE_PWM 1
 #define EN_BUCK_IRQ 1
 #define EN_VDDA_UV_IRQ 0
 #define EN_LDO_IRQ 0
@@ -110,6 +112,8 @@ static const unsigned int rt5033_safe_ldo_output_list[] = {
 	4900*1000,
 	4950*1000,
 };
+
+static int chip_rev;
 
 #define RT5033_REGULATOR_DECL(_id, min, max,out_list)   \
 {								                        \
@@ -260,10 +264,40 @@ static int rt5033_regulator_enable(struct regulator_dev *rdev)
 {
 	struct rt5033_regulator_info *info = rdev_get_drvdata(rdev);
 	int ret;
+#ifndef CONFIG_MFD_RT5033_SLDO_VBUSDET
+	bool prev_pmic_state, pmic_state;
+#endif
+
+#ifndef CONFIG_MFD_RT5033_SLDO_VBUSDET
+	if ( info->desc.id == RT5033_ID_LDO_SAFE ) {
+		pr_info("RT5033#SLDO enable skip\n");
+		rt5033_read_dump(info->i2c);
+		return 0;
+	}
+#endif
 	pr_info("%s Enable regulator %s\n", ALIAS_NAME, rdev->desc->name);
+
+	rt5033_lock_regulator(info->i2c);
+#ifndef CONFIG_MFD_RT5033_SLDO_VBUSDET
+	prev_pmic_state = rt5033_get_pmic_state(info->i2c);
+	rt5033_set_regulator_state(info->i2c, info->desc.id, true);
+	pmic_state = rt5033_get_pmic_state(info->i2c);
+	if (chip_rev >= RT5033A_REV && prev_pmic_state == false && pmic_state == true)
+		rt5033_clr_bits(info->i2c, 0x6b, 0x01);
+#endif
+	mdelay(1);
+
+#if EN_DCDC_FORCE_PWM
+	/* Enable Force PWM for Buck */
+	if (info->desc.id == RT5033_ID_DCDC1)
+		rt5033_set_bits(info->i2c, 0x41, 0x01);
+#endif /* EN_DCDC_FORCE_PWM */
 	ret = rt5033_set_bits(info->i2c, info->enable_reg,
 			info->enable_bit);
-	pr_info("%s %s %s ret (%d)", ALIAS_NAME, rdev->desc->name, __func__, ret);
+	pr_info("%s %s %s ret (%d)\n", ALIAS_NAME, rdev->desc->name, __func__, ret);
+	mdelay(1);
+
+	rt5033_unlock_regulator(info->i2c);
 
 	return ret;
 }
@@ -272,11 +306,32 @@ static int rt5033_regulator_disable(struct regulator_dev *rdev)
 {
 	struct rt5033_regulator_info *info = rdev_get_drvdata(rdev);
 	int ret;
+#ifndef CONFIG_MFD_RT5033_SLDO_VBUSDET
+	bool prev_pmic_state, pmic_state;
+#endif
+	rt5033_lock_regulator(info->i2c);
 
+	mdelay(1);
 	pr_info("%s Disable regulator %s\n", ALIAS_NAME, rdev->desc->name);
+#if EN_DCDC_FORCE_PWM
+	/* Disable Force PWM for Buck */
+	if (info->desc.id == RT5033_ID_DCDC1) {
+		rt5033_clr_bits(info->i2c, 0x41, 0x01);
+		udelay(100);
+	}
+#endif /* EN_DCDC_FORCE_PWM */
 	ret = rt5033_clr_bits(info->i2c, info->enable_reg,
 			info->enable_bit);
-	pr_info("%s %s ret (%d)", ALIAS_NAME, __func__, ret);
+	pr_info("%s %s ret (%d)\n", ALIAS_NAME, __func__, ret);
+	udelay(500);
+#ifndef CONFIG_MFD_RT5033_SLDO_VBUSDET
+	prev_pmic_state = rt5033_get_pmic_state(info->i2c);
+	rt5033_set_regulator_state(info->i2c, info->desc.id, false);
+	pmic_state = rt5033_get_pmic_state(info->i2c);
+	if (chip_rev >= RT5033A_REV && prev_pmic_state == true && pmic_state == false)
+		rt5033_set_bits(info->i2c, 0x6b, 0x01);
+#endif
+	rt5033_unlock_regulator(info->i2c);
 
 	return ret;
 }
@@ -291,9 +346,109 @@ static int rt5033_regulator_is_enabled(struct regulator_dev *rdev)
 		return ret;
 
 	ret = (ret & (info->enable_bit))?1:0;
-	pr_info("%s %s %s ret (%d)", ALIAS_NAME, rdev->desc->name, __func__, ret);
+	pr_info("%s %s %s ret (%d)\n", ALIAS_NAME, rdev->desc->name, __func__, ret);
 	return ret;
 }
+
+#ifdef CONFIG_MFD_RT5033_RESET_WA
+const static uint16_t rt5033_valid_pmic_status_f6[] = {
+	0x00,
+	0x01,
+	0x02,
+	0x04,
+	0x08,
+	0x10,
+};
+const static uint16_t rt5033_valid_pmic_status_f7[] = {
+	0x01,
+	0x02,
+	0x04,
+	0x08,
+	0x10,
+};
+
+static bool check_status_is_vaild(uint16_t sta, uint16_t reg)
+{
+	uint16_t i;
+	if (reg == 0xf6){
+		for (i = 0; i < ARRAY_SIZE(rt5033_valid_pmic_status_f6); i++) {
+			if (rt5033_valid_pmic_status_f6[i] == sta)
+			return true;
+		}
+	} else {
+		for (i = 0; i < ARRAY_SIZE(rt5033_valid_pmic_status_f7); i++) {
+			if (rt5033_valid_pmic_status_f7[i] == sta)
+			return true;
+		}
+	}
+	return false;
+}
+
+static int rt5033_regulator_get_status(struct regulator_dev *rdev)
+{
+	struct rt5033_regulator_info *info = rdev_get_drvdata(rdev);
+	/* REGULATOR_STATUS_OFF, REGULATOR_STATUS_ON, REGULATOR_STATUS_OFF */
+	int ret = REGULATOR_STATUS_ERROR; /* 2 */
+	int org_regval, dump_reg;
+	//int sta1, sta2;
+	uint16_t sta1, sta2;
+#ifndef CONFIG_MFD_RT5033_RESET_GPIO
+	/* if there are no reset solution(MRSTB or I2C),
+       skip reset workaround(always return true) */
+	if (chip_rev < RT5033A_REV)
+		return REGULATOR_STATUS_ON;
+#endif
+	rt5033_lock_regulator(info->i2c);
+	/* First time to check it */
+	msleep(2);
+	org_regval = rt5033_reg_read(info->i2c, 0xf0);
+	rt5033_reg_write(info->i2c, 0xf0, 0x1e);
+	rt5033_assign_bits(info->i2c, 0xf3, 0x03 << 6, 0x2 << 6);
+	sta1 = rt5033_reg_read(info->i2c, 0xf6) & 0x1f;
+	rt5033_assign_bits(info->i2c, 0xf3, 0x03 << 6, 0x3 << 6);
+	sta2 = rt5033_reg_read(info->i2c, 0xf7) & 0x1f;
+	printk("%s status #1[0x%2x]\n", __func__, (sta2 << 8) | sta1);
+	if (check_status_is_vaild(sta1, 0xf6) && check_status_is_vaild(sta2, 0xf7))
+		goto rt5033_reg_status_ok;
+
+	/* Failed case, we need to check again */
+	msleep(2);
+	org_regval = rt5033_reg_read(info->i2c, 0xf0);
+	rt5033_reg_write(info->i2c, 0xf0, 0x1e);
+	rt5033_assign_bits(info->i2c, 0xf3, 0x03 << 6, 0x2 << 6);
+	sta1 = rt5033_reg_read(info->i2c, 0xf6) & 0x1f;
+	rt5033_assign_bits(info->i2c, 0xf3, 0x03 << 6, 0x3 << 6);
+	sta2 = rt5033_reg_read(info->i2c, 0xf7) & 0x1f;
+	printk("%s status #2[0x%2x]\n", __func__, (sta2 << 8) | sta1);
+	if (check_status_is_vaild(sta1, 0xf6) && check_status_is_vaild(sta2, 0xf7))
+		goto rt5033_reg_status_ok;
+
+	/* Failed case, dump registers */
+	dump_reg = rt5033_reg_read(info->i2c, 0x41);
+	printk("%s LDO_CTRL:0x%2X\n", __func__, dump_reg);
+	dump_reg = rt5033_reg_read(info->i2c, 0x47);
+	printk("%s LDO_CTRL:0x%2X\n", __func__, dump_reg);
+	dump_reg = rt5033_reg_read(info->i2c, 0x68);
+	printk("%s PMIC_IRQ_STAT:0x%2X\n", __func__, dump_reg);
+	dump_reg = rt5033_reg_read(info->i2c, 0x69);
+	printk("%s PMIC_IRQ_CTRL:0x%2X\n", __func__, dump_reg);
+	dump_reg = rt5033_reg_read(info->i2c, 0x6A);
+	printk("%s SHDN_CTRL:0x%2X\n", __func__, dump_reg);
+	dump_reg = rt5033_reg_read(info->i2c, 0x6B);
+	printk("%s SHDN_CTRL:0x%2X\n", __func__, dump_reg);
+		goto rt5033_reg_status_exit;
+
+rt5033_reg_status_ok:
+	ret = rt5033_regulator_is_enabled(rdev) ?
+		REGULATOR_STATUS_ON :  REGULATOR_STATUS_OFF;
+
+rt5033_reg_status_exit:
+	rt5033_reg_write(info->i2c, 0xf0, org_regval);
+	rt5033_unlock_regulator(info->i2c);
+	pr_err("%s ret:%d\n", __func__, ret);
+	return ret;
+}
+#endif
 
 static struct regulator_ops rt5033_regulator_ldo_dcdc_ops = {
 	.list_voltage		= rt5033_regulator_list_voltage,
@@ -307,6 +462,9 @@ static struct regulator_ops rt5033_regulator_ldo_dcdc_ops = {
 	.enable			= rt5033_regulator_enable,
 	.disable		= rt5033_regulator_disable,
 	.is_enabled		= rt5033_regulator_is_enabled,
+#ifdef CONFIG_MFD_RT5033_RESET_WA
+	.get_status		= rt5033_regulator_get_status,
+#endif
 };
 
 static struct rt5033_regulator_info rt5033_regulator_infos[] = {
@@ -593,7 +751,9 @@ static int __devinit rt5033_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev;
 	struct regulator_init_data* init_data;
 	int ret;
+
 	dev_info(&pdev->dev, "Richtek RT5033 regulator driver probing (id = %d)...\n", pdev->id);
+	chip_rev = chip->rev_id;
 #ifdef CONFIG_OF
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
 	if (pdev->dev.parent->of_node) {
@@ -712,11 +872,42 @@ static int __devexit rt5033_regulator_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifndef CONFIG_MFD_RT5033_SLDO_VBUSDET
+static void rt5033_regulator_shutdown(struct device *dev)
+{
+    struct rt5033_mfd_chip *chip = dev_get_drvdata(dev->parent);
+    static int once = ARRAY_SIZE(rt5033_regulator_infos);
+
+    if ( chip_rev >= RT5033A_REV ) {
+        once--;
+        if ( once==0 ) {
+            printk("RT5033#SLDO enable by shutdown\n");
+            rt5033_read_dump(chip->i2c_client);
+            rt5033_lock_regulator(chip->i2c_client);
+            msleep(1);
+
+            // OSC clear, SafeLDO enable
+            rt5033_clr_bits(chip->i2c_client, 0x6b, 0x01);
+            msleep(1);
+
+            // SafeLDO enable for charger booting
+            rt5033_set_bits(chip->i2c_client, RT5033_REGULATOR_REG_OUTPUT_EN, RT5033_REGULATOR_EN_MASK_LDO_SAFE);
+            msleep(1);
+            rt5033_unlock_regulator(chip->i2c_client);
+            rt5033_read_dump(chip->i2c_client);
+        }
+    }
+}
+#endif
+
 static struct platform_driver rt5033_regulator_driver = {
 	.driver		= {
 		.name	= "rt5033-regulator",
 		.owner	= THIS_MODULE,
 		.of_match_table = rt5033_regulator_match_table,
+#ifndef CONFIG_MFD_RT5033_SLDO_VBUSDET
+		.shutdown = rt5033_regulator_shutdown,
+#endif
 	},
 	.probe		= rt5033_regulator_probe,
 	.remove		= __devexit_p(rt5033_regulator_remove),

@@ -536,19 +536,26 @@ exit:
 	return ret;
 }
 
-int fimc_is_frame_open(struct fimc_is_framemgr *this, u32 id, u32 buffers)
+int fimc_is_frame_probe(struct fimc_is_framemgr *this, u32 id)
+{
+	int ret = 0;
+
+	this->id = id;
+	spin_lock_init(&this->slock);
+
+	return ret;
+}
+
+int fimc_is_frame_open(struct fimc_is_framemgr *this, u32 buffers)
 {
 	int ret = 0;
 	u32 i, j;
-
-	spin_lock_init(&this->slock);
 
 	INIT_LIST_HEAD(&this->frame_free_head);
 	INIT_LIST_HEAD(&this->frame_request_head);
 	INIT_LIST_HEAD(&this->frame_process_head);
 	INIT_LIST_HEAD(&this->frame_complete_head);
 
-	this->id = id;
 	this->frame_cnt = buffers;
 	this->frame_fre_cnt = 0;
 	this->frame_req_cnt = 0;
@@ -556,7 +563,8 @@ int fimc_is_frame_open(struct fimc_is_framemgr *this, u32 id, u32 buffers)
 	this->frame_com_cnt = 0;
 
 	for (i = 0; i < buffers; ++i) {
-		this->frame[i].memory = FRAME_UNI_MEM;
+		clear_bit(FRAME_INI_MEM, &this->frame[i].memory);
+		clear_bit(FRAME_MAP_MEM, &this->frame[i].memory);
 		this->frame[i].work_data1 = NULL;
 		this->frame[i].work_data2 = NULL;
 		this->frame[i].index = i;
@@ -597,7 +605,8 @@ int fimc_is_frame_close(struct fimc_is_framemgr *this)
 	buffers = this->frame_cnt;
 
 	for (i = 0; i < buffers; ++i) {
-		this->frame[i].memory = FRAME_UNI_MEM;
+		clear_bit(FRAME_INI_MEM, &this->frame[i].memory);
+		clear_bit(FRAME_MAP_MEM, &this->frame[i].memory);
 		this->frame[i].index = i;
 		this->frame[i].fcount = 0;
 		this->frame[i].rcount = 0;

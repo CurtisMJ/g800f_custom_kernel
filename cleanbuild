@@ -1,4 +1,4 @@
 make clean
 make distclean
-make kminilte_00_defconfig
+make xyref5260_evt0_defconfig
 make -j6

@@ -1520,16 +1520,6 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 			continue;
 		}
 
-#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
-			/* Enable ncm function */
-			if (is_ncm_ready(name)) {
-				printk(KERN_DEBUG "usb: %s ncm on\n",
-						__func__);
-				err = android_enable_function(dev,
-						"ncm");
-				continue;
-			}
-#endif
 		err = android_enable_function(dev, name);
 
 		if (err)
@@ -1617,8 +1607,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 				}
 			}
 #endif
-			if (is_ncm_ready(f->name))
-				set_ncm_device_descriptor(&cdev->desc);
 		}
 		strncpy(manufacturer_string, "SAMSUNG",
 				sizeof(manufacturer_string) - 1);

@@ -45,7 +45,7 @@
 #define CALIBRATION_DATA_AMOUNT       20
 #define MAX_ACCEL_1G                  16384
 
-#define K2HH_DEFAULT_DELAY            200
+#define K2HH_DEFAULT_DELAY            200000000LL
 
 #define CHIP_ID_RETRIES               3
 #define ACCEL_LOG_TIME                15 /* 15 sec */
@@ -165,6 +165,8 @@ struct k2hh_p {
 	u8 negate_x;
 	u8 negate_y;
 	u8 negate_z;
+
+	u64 old_timestamp;
 };
 
 #define ACC_POWEROFF		0x00
@@ -405,6 +407,12 @@ static void k2hh_work_func(struct work_struct *work)
 	struct k2hh_p *data = container_of((struct delayed_work *)work,
 	struct k2hh_p, work);
 	unsigned long delay = nsecs_to_jiffies(atomic_read(&data->delay));
+	unsigned long pdelay = atomic_read(&data->delay);
+
+	struct timespec ts = ktime_to_timespec(ktime_get_boottime());
+	u64 timestamp_new = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+	int time_hi, time_lo;
+	u64 diff = 0ULL;
 
 	ret = k2hh_read_accel_xyz(data, &acc);
 	if (ret < 0)
@@ -414,10 +422,39 @@ static void k2hh_work_func(struct work_struct *work)
 	data->accdata.y = acc.y - data->caldata.y;
 	data->accdata.z = acc.z - data->caldata.z;
 
+
+	if (data->old_timestamp != 0 && ((timestamp_new - data->old_timestamp)*10 > (pdelay) * 18)) {
+		u64 shift_timestamp = pdelay >> 1;
+		u64 timestamp = 0ULL;
+
+		diff = timestamp_new - data->old_timestamp;
+
+		for (timestamp = data->old_timestamp + pdelay; timestamp < timestamp_new - shift_timestamp; timestamp+=pdelay) {
+			time_hi = (int)((timestamp & TIME_HI_MASK) >> TIME_HI_SHIFT);
+			time_lo = (int)(timestamp & TIME_LO_MASK);
+
+			diff = timestamp - data->old_timestamp;
+
+			input_report_rel(data->input, REL_X, data->accdata.x);
+			input_report_rel(data->input, REL_Y, data->accdata.y);
+			input_report_rel(data->input, REL_Z, data->accdata.z);
+			input_report_rel(data->input, REL_DIAL, time_hi);
+			input_report_rel(data->input, REL_MISC, time_lo);
+			input_sync(data->input);
+		}
+	}
+
+	time_hi = (int)((timestamp_new & TIME_HI_MASK) >> TIME_HI_SHIFT);
+	time_lo = (int)(timestamp_new & TIME_LO_MASK);
+
 	input_report_rel(data->input, REL_X, data->accdata.x);
 	input_report_rel(data->input, REL_Y, data->accdata.y);
 	input_report_rel(data->input, REL_Z, data->accdata.z);
+	input_report_rel(data->input, REL_DIAL, time_hi);
+	input_report_rel(data->input, REL_MISC, time_lo);
 	input_sync(data->input);
+
+	data->old_timestamp = timestamp_new;
 
 exit:
 	if (((int64_t)atomic_read(&data->delay) * (int64_t)data->time_count)
@@ -468,6 +505,7 @@ static ssize_t k2hh_enable_store(struct device *dev,
 
 	if (enable) {
 		if (pre_enable == OFF) {
+			data->old_timestamp = 0LL;
 			k2hh_open_calibration(data);
 			atomic_set(&data->enable, ON);
 			k2hh_set_range(data, K2HH_RANGE_2G);
@@ -505,6 +543,9 @@ static ssize_t k2hh_delay_store(struct device *dev,
 		pr_err("[SENSOR]: %s - Invalid Argument\n", __func__);
 		return ret;
 	}
+
+	if (delay > K2HH_DEFAULT_DELAY)
+		delay = K2HH_DEFAULT_DELAY;
 
 	atomic_set(&data->delay, delay);
 	k2hh_delay_change(data);
@@ -1026,6 +1067,8 @@ static int k2hh_input_init(struct k2hh_p *data)
 	input_set_capability(dev, EV_REL, REL_X);
 	input_set_capability(dev, EV_REL, REL_Y);
 	input_set_capability(dev, EV_REL, REL_Z);
+	input_set_capability(dev, EV_REL, REL_DIAL);
+	input_set_capability(dev, EV_REL, REL_MISC);
 	input_set_drvdata(dev, data);
 
 	ret = input_register_device(dev);

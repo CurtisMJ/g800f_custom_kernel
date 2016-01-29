@@ -405,12 +405,7 @@ void s5p_mfc_release_instance_buffer(struct s5p_mfc_ctx *ctx)
 		ctx->ctx.virt = NULL;
 	}
 	if (ctx->shm.alloc) {
-#ifdef CONFIG_EXYNOS_CONTENT_PATH_PROTECTION
-		if (!ctx->is_drm)
-			s5p_mfc_mem_free_priv(ctx->shm.alloc);
-#else
 		s5p_mfc_mem_free_priv(ctx->shm.alloc);
-#endif
 		ctx->shm.alloc = NULL;
 		ctx->shm.ofs = 0;
 		ctx->shm.virt = NULL;
@@ -568,8 +563,8 @@ int s5p_mfc_set_dec_stream_buffer(struct s5p_mfc_ctx *ctx, dma_addr_t buf_addr,
 	}
 
 	cpb_buf_size = ALIGN(dec->src_buf_size, S5P_FIMV_CPB_ALIGN);
-	mfc_debug(2, "inst_no: %d, buf_addr: 0x%08lx\n",
-		ctx->inst_no, (unsigned long)buf_addr);
+	mfc_debug(2, "inst_no: %d, buf_addr: 0x%08x, offset: %d\n",
+		ctx->inst_no, buf_addr, start_num_byte);
 	mfc_debug(2, "strm_size: 0x%08x (%d), cpb_buf_size: 0x%08x (%d)\n",
 		buf_size, buf_size, cpb_buf_size, cpb_buf_size);
 	WRITEL(OFFSETA(buf_addr), S5P_FIMV_SI_CH0_SB_ST_ADR);
@@ -1003,8 +998,14 @@ static int s5p_mfc_set_enc_params(struct s5p_mfc_ctx *ctx)
 	reg = READL(S5P_FIMV_ENC_PIC_TYPE_CTRL);
 	reg |= (1 << 18);
 	reg &= ~(0xFFFF);
-	reg |= p->gop_size;
+	reg |= p->gop_size & 0xFFFF;
 	WRITEL(reg, S5P_FIMV_ENC_PIC_TYPE_CTRL);
+
+	if(FW_HAS_GOP2(dev)) {
+		reg = 0;
+		reg |= (p->gop_size >> 16) & 0x3FFF;
+		WRITEL(reg, S5P_FIMV_E_GOP_CONFIG2);
+	}
 
 	WRITEL(0, S5P_FIMV_ENC_B_RECON_WRITE_ON);
 
@@ -1691,15 +1692,17 @@ static inline int s5p_mfc_get_new_ctx(struct s5p_mfc_dev *dev)
 	return new_ctx;
 }
 
-static inline void s5p_mfc_run_res_change(struct s5p_mfc_ctx *ctx)
+static inline int s5p_mfc_run_res_change(struct s5p_mfc_ctx *ctx)
 {
+	int ret;
 	struct s5p_mfc_dev *dev = ctx->dev;
 
 	s5p_mfc_set_dec_desc_buffer(ctx);
 	s5p_mfc_set_dec_stream_buffer(ctx, 0, 0, 0);
 	dev->curr_ctx = ctx->num;
 	s5p_mfc_clean_ctx_int_flags(ctx);
-	s5p_mfc_decode_one_frame(ctx, 2);
+	ret = s5p_mfc_decode_one_frame(ctx, 2);
+	return ret;
 }
 
 static inline int s5p_mfc_run_dec_last_frames(struct s5p_mfc_ctx *ctx)
@@ -1748,6 +1751,8 @@ static inline int s5p_mfc_run_dec_last_frames(struct s5p_mfc_ctx *ctx)
 
 #define is_full_DPB(ctx, total)		(((ctx)->dst_queue_cnt == 1) && 	\
 					((total) >= (ctx->dpb_count + 5)))
+#define is_full_refered(ctx, dec)	(((ctx)->dst_queue_cnt == 0) &&         \
+					(((dec)->ref_queue_cnt) == ((ctx)->dpb_count + 5)))
 /* Try to search non-referenced DPB on ref-queue */
 static struct s5p_mfc_buf *search_for_DPB(struct s5p_mfc_ctx *ctx)
 {
@@ -1773,6 +1778,16 @@ static struct s5p_mfc_buf *search_for_DPB(struct s5p_mfc_ctx *ctx)
 
 		if (is_full_DPB(ctx, sum_dpb)) {
 			mfc_debug(2, "We should use this buffer.\n");
+		} else if (is_full_refered(ctx, dec)) {
+			mfc_debug(2, "All buffers are referenced.\n");
+			dst_vb = list_entry(dec->ref_queue.next,
+					struct s5p_mfc_buf, list);
+
+			list_del(&dst_vb->list);
+			dec->ref_queue_cnt--;
+
+			list_add_tail(&dst_vb->list, &ctx->dst_queue);
+			ctx->dst_queue_cnt++;
 		} else {
 			list_del(&dst_vb->list);
 			ctx->dst_queue_cnt--;
@@ -1785,6 +1800,12 @@ static struct s5p_mfc_buf *search_for_DPB(struct s5p_mfc_ctx *ctx)
 
 			return NULL;
 		}
+	} else {
+		list_del(&dst_vb->list);
+		dec->ref_queue_cnt--;
+
+		list_add_tail(&dst_vb->list, &ctx->dst_queue);
+		ctx->dst_queue_cnt++;
 	}
 
 	return dst_vb;
@@ -1807,7 +1828,13 @@ static inline int s5p_mfc_run_dec_frame(struct s5p_mfc_ctx *ctx)
 		spin_unlock_irqrestore(&dev->irqlock, flags);
 		return -EAGAIN;
 	}
-	if ((dec->is_dynamic_dpb && ctx->dst_queue_cnt == 0) ||
+	if (is_h264(ctx)) {
+		if (dec->is_dynamic_dpb && ctx->dst_queue_cnt == 0 &&
+			dec->ref_queue_cnt < (ctx->dpb_count + 5)) {
+			spin_unlock_irqrestore(&dev->irqlock, flags);
+			return -EAGAIN;
+		}
+	} else if ((dec->is_dynamic_dpb && ctx->dst_queue_cnt == 0) ||
 		(!dec->is_dynamic_dpb && ctx->dst_queue_cnt < ctx->dpb_count)) {
 		spin_unlock_irqrestore(&dev->irqlock, flags);
 		return -EAGAIN;
@@ -1824,7 +1851,13 @@ static inline int s5p_mfc_run_dec_frame(struct s5p_mfc_ctx *ctx)
 				s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
 				dec->consumed, dec->remained_size);
 	} else {
-		s5p_mfc_set_dec_stream_buffer(ctx,
+		if (temp_vb->consumed)
+			s5p_mfc_set_dec_stream_buffer(ctx,
+				s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
+				temp_vb->consumed,
+				temp_vb->vb.v4l2_planes[0].bytesused - temp_vb->consumed);
+		else
+			s5p_mfc_set_dec_stream_buffer(ctx,
 				s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
 				0, temp_vb->vb.v4l2_planes[0].bytesused);
 	}
@@ -1935,27 +1968,69 @@ static inline int s5p_mfc_run_enc_frame(struct s5p_mfc_ctx *ctx)
 	return 0;
 }
 
-static inline void s5p_mfc_run_init_dec(struct s5p_mfc_ctx *ctx)
+static inline int s5p_mfc_run_init_dec(struct s5p_mfc_ctx *ctx)
 {
-	struct s5p_mfc_dev *dev = ctx->dev;
+	struct s5p_mfc_dev *dev;
+	struct s5p_mfc_dec *dec;
 	unsigned long flags;
 	struct s5p_mfc_buf *temp_vb;
 
+	if (!ctx) {
+		mfc_err("no mfc context to run\n");
+		return -ENODEV;
+	}
+
+	dev = ctx->dev;
+	if (!dev) {
+		mfc_err("no mfc device to run\n");
+		return -ENODEV;
+	}
+
+	dec = ctx->dec_priv;
+
 	/* Initializing decoding - parsing header */
 	spin_lock_irqsave(&dev->irqlock, flags);
+
+	if (list_empty(&ctx->src_queue)) {
+		spin_unlock_irqrestore(&dev->irqlock, flags);
+		ctx->state = MFCINST_ERROR;
+		s5p_mfc_clean_ctx_int_flags(ctx);
+		mfc_err("no ctx src_queue to run\n");
+		return -EINVAL;
+	}
+
 	mfc_debug(2, "Preparing to init decoding.\n");
 	temp_vb = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
 	s5p_mfc_set_dec_desc_buffer(ctx);
-	mfc_debug(2, "Header size: %d\n", temp_vb->vb.v4l2_planes[0].bytesused);
-	s5p_mfc_set_dec_stream_buffer(ctx,
-			s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
-			0, temp_vb->vb.v4l2_planes[0].bytesused);
+	mfc_info("Header size: %u, (offset: %d)\n",
+		temp_vb->vb.v4l2_planes[0].bytesused, temp_vb->consumed);
+
+	if (dec && temp_vb->vb.v4l2_planes[0].bytesused < dec->src_buf_size) {
+		if (temp_vb->consumed)
+			s5p_mfc_set_dec_stream_buffer(ctx,
+					s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
+					temp_vb->consumed,
+					temp_vb->vb.v4l2_planes[0].bytesused - temp_vb->consumed);
+		else
+			s5p_mfc_set_dec_stream_buffer(ctx,
+					s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
+					0, temp_vb->vb.v4l2_planes[0].bytesused);
+	} else {
+		mfc_err("mfc received bytesused: %u compared with src_buf_size: %d\n",
+		temp_vb->vb.v4l2_planes[0].bytesused, dec->src_buf_size);
+		ctx->state = MFCINST_ERROR;
+		s5p_mfc_clean_ctx_int_flags(ctx);
+		spin_unlock_irqrestore(&dev->irqlock, flags);
+		return -EINVAL;
+	}
+
 	spin_unlock_irqrestore(&dev->irqlock, flags);
 	dev->curr_ctx = ctx->num;
 	mfc_debug(2, "Header addr: 0x%08lx\n",
 		(unsigned long)s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0));
 	s5p_mfc_clean_ctx_int_flags(ctx);
 	s5p_mfc_init_decode(ctx);
+	return 0;
 }
 
 static inline int s5p_mfc_run_init_enc(struct s5p_mfc_ctx *ctx)
@@ -2013,16 +2088,6 @@ static inline int s5p_mfc_run_init_dec_buffers(struct s5p_mfc_ctx *ctx)
 		ctx->state = MFCINST_ERROR;
 	}
 	return ret;
-}
-
-static inline int s5p_mfc_ctx_ready(struct s5p_mfc_ctx *ctx)
-{
-	if (ctx->type == MFCINST_DECODER)
-		return s5p_mfc_dec_ctx_ready(ctx);
-	else if (ctx->type == MFCINST_ENCODER)
-		return s5p_mfc_enc_ctx_ready(ctx);
-
-	return 0;
 }
 
 /* Try running an operation on hardware */
@@ -2098,22 +2163,22 @@ void s5p_mfc_try_run(struct s5p_mfc_dev *dev)
 			ret = s5p_mfc_close_inst(ctx);
 			break;
 		case MFCINST_GOT_INST:
-			s5p_mfc_run_init_dec(ctx);
+			ret = s5p_mfc_run_init_dec(ctx);
 			break;
 		case MFCINST_HEAD_PARSED:
 			ret = s5p_mfc_run_init_dec_buffers(ctx);
 			break;
 		case MFCINST_RES_CHANGE_INIT:
-			s5p_mfc_run_res_change(ctx);
+			ret = s5p_mfc_run_res_change(ctx);
 			break;
 		case MFCINST_RES_CHANGE_FLUSH:
-			s5p_mfc_run_dec_frame(ctx);
+			ret = s5p_mfc_run_dec_frame(ctx);
 			break;
 		case MFCINST_RES_CHANGE_END:
 			mfc_debug(2, "Finished remaining frames after resolution change.\n");
 			ctx->capture_state = QUEUE_FREE;
 			mfc_debug(2, "Will re-init the codec`.\n");
-			s5p_mfc_run_init_dec(ctx);
+			ret = s5p_mfc_run_init_dec(ctx);
 			break;
 		default:
 			ret = -EAGAIN;

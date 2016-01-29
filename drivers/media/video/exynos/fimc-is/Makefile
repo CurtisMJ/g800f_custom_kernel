@@ -42,6 +42,7 @@ obj-$(CONFIG_CAMERA_SENSOR_6D1_OBJ) += sensor/fimc-is-device-6d1.o
 obj-$(CONFIG_CAMERA_SENSOR_IMX135_OBJ) += sensor/fimc-is-device-imx135.o
 obj-$(CONFIG_CAMERA_SENSOR_3L2_OBJ) += sensor/fimc-is-device-3l2.o
 obj-$(CONFIG_CAMERA_SENSOR_2P2_OBJ) += sensor/fimc-is-device-2p2.o
+obj-$(CONFIG_CAMERA_SENSOR_2P2_12M_OBJ) += sensor/fimc-is-device-2p2_12m.o
 obj-$(CONFIG_CAMERA_SENSOR_3H5_OBJ) += sensor/fimc-is-device-3h5.o
 obj-$(CONFIG_CAMERA_SENSOR_3H7_OBJ) += sensor/fimc-is-device-3h7.o
 obj-$(CONFIG_CAMERA_SENSOR_3H7_SUNNY_OBJ) += sensor/fimc-is-device-3h7_sunny.o
