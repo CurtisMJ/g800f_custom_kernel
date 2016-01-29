@@ -1213,7 +1213,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +				SCheckBox:{
 +					label:"Enable DT2W",
 +					default:0,
-+					action:"generic /sys/class/input/input1/device/dt2w_status"
++					action:"generic /sys/class/input/input2/device/dt2w_status"
 +				}
 +			},
 +			{
