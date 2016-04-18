@@ -1231,19 +1231,6 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +			},
 +			{
 +               SPane:{
-+                  title:"Ultra Kernel Samepage Merging",
-+                  description:"This feature allows the compression of data in RAM by merging identical memory pages, here optimized for extra performance for lower powered processors. This should noticably improve multi-tasking capabilities, if only in specific situations."
-+               }
-+            },
-+			 {
-+				SCheckBox:{
-+					label:"Enable UKSM",
-+					default:0,
-+					action:"generic /sys/kernel/mm/uksm/run"
-+				}
-+			},
-+			{
-+               SPane:{
 +                  title:"Fading LED",
 +                  description:"Fades the LED notification light in and out when pulsing for an aesthetically pleasing effect."
 +               }
