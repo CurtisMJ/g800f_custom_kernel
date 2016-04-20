@@ -1,6 +1,6 @@
 diff -urN old_rd/fstab.universal3470 model_rd/fstab.universal3470
---- old_rd/fstab.universal3470	2016-04-04 11:34:21.265914979 +0200
-+++ model_rd/fstab.universal3470	2016-04-04 11:37:34.079905286 +0200
+--- old_rd/fstab.universal3470	2016-04-20 20:02:08.583494698 +0200
++++ model_rd/fstab.universal3470	2016-04-20 20:02:35.339494170 +0200
 @@ -6,7 +6,9 @@
  
  /dev/block/mmcblk0p18    /system             ext4      ro,errors=panic                                                                   wait
@@ -13,7 +13,7 @@ diff -urN old_rd/fstab.universal3470 model_rd/fstab.universal3470
  # VOLD
 diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_direc model_rd/res/uci_p/actions/boefflasnd_dac_direc
 --- old_rd/res/uci_p/actions/boefflasnd_dac_direc	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_dac_direc	2016-04-04 11:35:25.449006713 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_dac_direc	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -22,7 +22,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_direc model_rd/res/uci_p/actio
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_direct |  sed -n -e '/DAC direct/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_over model_rd/res/uci_p/actions/boefflasnd_dac_over
 --- old_rd/res/uci_p/actions/boefflasnd_dac_over	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_dac_over	2016-04-04 11:35:25.449006713 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_dac_over	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -31,7 +31,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_over model_rd/res/uci_p/action
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_oversampling |  sed -n -e '/DAC oversampling/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_eq model_rd/res/uci_p/actions/boefflasnd_eq
 --- old_rd/res/uci_p/actions/boefflasnd_eq	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_eq	2016-04-04 11:35:25.449006713 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_eq	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,11 @@
 +#!/system/bin/sh
 +EQ_NODE="/sys/devices/virtual/misc/boeffla_sound/eq_gains"
@@ -46,7 +46,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_eq model_rd/res/uci_p/actions/boef
 +fi
 diff -urN old_rd/res/uci_p/actions/boefflasnd_fll model_rd/res/uci_p/actions/boefflasnd_fll
 --- old_rd/res/uci_p/actions/boefflasnd_fll	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_fll	2016-04-04 11:35:25.449006713 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_fll	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -55,7 +55,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_fll model_rd/res/uci_p/actions/boe
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/fll_tuning |  sed -n -e '/FLL tuning/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_headeq model_rd/res/uci_p/actions/boefflasnd_headeq
 --- old_rd/res/uci_p/actions/boefflasnd_headeq	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_headeq	2016-04-04 11:35:25.449006713 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_headeq	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -64,7 +64,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_headeq model_rd/res/uci_p/actions/
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/eq |  sed -n -e '/EQ/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_headvol model_rd/res/uci_p/actions/boefflasnd_headvol
 --- old_rd/res/uci_p/actions/boefflasnd_headvol	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_headvol	2016-04-04 11:35:25.449006713 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_headvol	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,27 @@
 +#!/system/bin/sh
 +RAW="/sys/devices/virtual/misc/boeffla_sound/headphone_volume";
@@ -95,7 +95,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_headvol model_rd/res/uci_p/actions
 +fi
 diff -urN old_rd/res/uci_p/actions/boefflasnd_mono model_rd/res/uci_p/actions/boefflasnd_mono
 --- old_rd/res/uci_p/actions/boefflasnd_mono	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_mono	2016-04-04 11:35:25.449006713 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_mono	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -104,7 +104,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_mono model_rd/res/uci_p/actions/bo
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/mono_downmix |  sed -n -e '/Mono downmix/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_privmode model_rd/res/uci_p/actions/boefflasnd_privmode
 --- old_rd/res/uci_p/actions/boefflasnd_privmode	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_privmode	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_privmode	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -113,7 +113,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_privmode model_rd/res/uci_p/action
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/privacy_mode |  sed -n -e '/Privacy mode/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_run model_rd/res/uci_p/actions/boefflasnd_run
 --- old_rd/res/uci_p/actions/boefflasnd_run	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_run	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_run	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -122,7 +122,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_run model_rd/res/uci_p/actions/boe
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/boeffla_sound |  sed -n -e '/Boeffla sound status/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_speakeq model_rd/res/uci_p/actions/boefflasnd_speakeq
 --- old_rd/res/uci_p/actions/boefflasnd_speakeq	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_speakeq	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_speakeq	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -131,7 +131,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_speakeq model_rd/res/uci_p/actions
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/speaker_tuning |  sed -n -e '/Speaker tuning/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_speakvol model_rd/res/uci_p/actions/boefflasnd_speakvol
 --- old_rd/res/uci_p/actions/boefflasnd_speakvol	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_speakvol	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_speakvol	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,33 @@
 +#!/system/bin/sh
 +RAW="/sys/devices/virtual/misc/boeffla_sound/speaker_volume";
@@ -168,7 +168,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_speakvol model_rd/res/uci_p/action
 +fi
 diff -urN old_rd/res/uci_p/actions/boefflasnd_stereoexp model_rd/res/uci_p/actions/boefflasnd_stereoexp
 --- old_rd/res/uci_p/actions/boefflasnd_stereoexp	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/boefflasnd_stereoexp	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/boefflasnd_stereoexp	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,5 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -177,7 +177,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_stereoexp model_rd/res/uci_p/actio
 +echo `cat /sys/devices/virtual/misc/boeffla_sound/stereo_expansion |  sed -n -e '/Stereo expansion/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/bracket-option model_rd/res/uci_p/actions/bracket-option
 --- old_rd/res/uci_p/actions/bracket-option	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/bracket-option	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/bracket-option	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,9 @@
 +#!/system/bin/sh
 +if [ -f $1 ];then
@@ -190,7 +190,7 @@ diff -urN old_rd/res/uci_p/actions/bracket-option model_rd/res/uci_p/actions/bra
 +fi
 diff -urN old_rd/res/uci_p/actions/busvolt model_rd/res/uci_p/actions/busvolt
 --- old_rd/res/uci_p/actions/busvolt	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/busvolt	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/busvolt	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,23 @@
 +#!/system/bin/sh
 +VOLT_TABLE="$1"
@@ -217,7 +217,7 @@ diff -urN old_rd/res/uci_p/actions/busvolt model_rd/res/uci_p/actions/busvolt
 +fi
 diff -urN old_rd/res/uci_p/actions/busvoltdef model_rd/res/uci_p/actions/busvoltdef
 --- old_rd/res/uci_p/actions/busvoltdef	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/busvoltdef	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/busvoltdef	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,4 @@
 +#!/system/bin/sh
 +VOLT_TABLE="$1"
@@ -225,7 +225,7 @@ diff -urN old_rd/res/uci_p/actions/busvoltdef model_rd/res/uci_p/actions/busvolt
 +echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/cpufreq model_rd/res/uci_p/actions/cpufreq
 --- old_rd/res/uci_p/actions/cpufreq	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/cpufreq	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/cpufreq	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,24 @@
 +#!/system/bin/sh
 +FREQRAW=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq`;
@@ -253,7 +253,7 @@ diff -urN old_rd/res/uci_p/actions/cpufreq model_rd/res/uci_p/actions/cpufreq
 +echo "Core 0 : $CORE0@nCore 1 : $CORE1@nCore 2 : $CORE2@nCore 3 : $CORE3"
 diff -urN old_rd/res/uci_p/actions/cpuset model_rd/res/uci_p/actions/cpuset
 --- old_rd/res/uci_p/actions/cpuset	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/cpuset	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/cpuset	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,31 @@
 +#!/system/bin/sh
 +CURRGOV=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`;
@@ -288,7 +288,7 @@ diff -urN old_rd/res/uci_p/actions/cpuset model_rd/res/uci_p/actions/cpuset
 +fi
 diff -urN old_rd/res/uci_p/actions/cpuvolt model_rd/res/uci_p/actions/cpuvolt
 --- old_rd/res/uci_p/actions/cpuvolt	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/cpuvolt	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/cpuvolt	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,23 @@
 +#!/system/bin/sh
 +VOLT_TABLE="/sys/devices/system/cpu/cpufreq/voltage_table"
@@ -315,7 +315,7 @@ diff -urN old_rd/res/uci_p/actions/cpuvolt model_rd/res/uci_p/actions/cpuvolt
 +fi
 diff -urN old_rd/res/uci_p/actions/cpuvoltdef model_rd/res/uci_p/actions/cpuvoltdef
 --- old_rd/res/uci_p/actions/cpuvoltdef	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/cpuvoltdef	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/cpuvoltdef	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,4 @@
 +#!/system/bin/sh
 +VOLT_TABLE="/sys/devices/system/cpu/cpufreq/voltage_table"
@@ -323,7 +323,7 @@ diff -urN old_rd/res/uci_p/actions/cpuvoltdef model_rd/res/uci_p/actions/cpuvolt
 +echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/generic model_rd/res/uci_p/actions/generic
 --- old_rd/res/uci_p/actions/generic	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/generic	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/generic	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,8 @@
 +#!/system/bin/sh
 +if [ -f $1 ];then
@@ -335,7 +335,7 @@ diff -urN old_rd/res/uci_p/actions/generic model_rd/res/uci_p/actions/generic
 +fi
 diff -urN old_rd/res/uci_p/actions/gpuvolt model_rd/res/uci_p/actions/gpuvolt
 --- old_rd/res/uci_p/actions/gpuvolt	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/gpuvolt	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/gpuvolt	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,23 @@
 +#!/system/bin/sh
 +VOLT_TABLE="/sys/devices/platform/mali_dev.0/volt_table"
@@ -362,7 +362,7 @@ diff -urN old_rd/res/uci_p/actions/gpuvolt model_rd/res/uci_p/actions/gpuvolt
 +fi
 diff -urN old_rd/res/uci_p/actions/gpuvoltdef model_rd/res/uci_p/actions/gpuvoltdef
 --- old_rd/res/uci_p/actions/gpuvoltdef	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/gpuvoltdef	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/gpuvoltdef	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,4 @@
 +#!/system/bin/sh
 +VOLT_TABLE="/sys/devices/platform/mali_dev.0/volt_table"
@@ -370,7 +370,7 @@ diff -urN old_rd/res/uci_p/actions/gpuvoltdef model_rd/res/uci_p/actions/gpuvolt
 +echo "Please restart Synapse to save changed settings"
 diff -urN old_rd/res/uci_p/actions/mdnie model_rd/res/uci_p/actions/mdnie
 --- old_rd/res/uci_p/actions/mdnie	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/mdnie	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/mdnie	2016-04-20 20:02:35.343494170 +0200
 @@ -0,0 +1,32 @@
 +#!/system/bin/sh
 +if [[ ! -z $1 ]];then
@@ -406,7 +406,7 @@ diff -urN old_rd/res/uci_p/actions/mdnie model_rd/res/uci_p/actions/mdnie
 +fi
 diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 --- old_rd/res/uci_p/actions/thermal	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/actions/thermal	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/res/uci_p/actions/thermal	2016-04-20 20:02:35.343494170 +0200
 @@ -0,0 +1,4 @@
 +#!/system/bin/sh
 +TEMP=`cat /sys/devices/virtual/thermal/thermal_zone0/curr_temp`;
@@ -414,8 +414,8 @@ diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 +echo "$TEMP2 C°"
 diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 --- old_rd/res/uci_p/config.json	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/res/uci_p/config.json	2016-04-04 11:35:25.453006690 +0200
-@@ -0,0 +1,843 @@
++++ model_rd/res/uci_p/config.json	2016-04-20 20:03:29.895493093 +0200
+@@ -0,0 +1,830 @@
 +{
 +sections:[
 +      {
@@ -1231,19 +1231,6 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +			},
 +			{
 +               SPane:{
-+                  title:"Ultra Kernel Samepage Merging",
-+                  description:"This feature allows the compression of data in RAM by merging identical memory pages, here optimized for extra performance for lower powered processors. This should noticably improve multi-tasking capabilities, if only in specific situations."
-+               }
-+            },
-+			 {
-+				SCheckBox:{
-+					label:"Enable UKSM",
-+					default:0,
-+					action:"generic /sys/kernel/mm/uksm/run"
-+				}
-+			},
-+			{
-+               SPane:{
 +                  title:"Fading LED",
 +                  description:"Fades the LED notification light in and out when pulsing for an aesthetically pleasing effect."
 +               }
@@ -1261,7 +1248,7 @@ diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 +}
 diff -urN old_rd/sbin/uci model_rd/sbin/uci
 --- old_rd/sbin/uci	1970-01-01 02:00:00.000000000 +0200
-+++ model_rd/sbin/uci	2016-04-04 11:35:25.453006690 +0200
++++ model_rd/sbin/uci	2016-04-20 20:02:35.343494170 +0200
 @@ -0,0 +1,10 @@
 +#!/system/bin/sh
 +UCI_P=/res/uci_p;
