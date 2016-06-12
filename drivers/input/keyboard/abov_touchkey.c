@@ -36,6 +36,8 @@
 #include <linux/earlysuspend.h>
 #endif
 #include <plat/gpio-cfg.h>
+#include <linux/dc_motor.h>
+#include <linux/miscdevice.h>
 
 /* registers */
 #define ABOV_BTNSTATUS		0x00
@@ -121,6 +123,7 @@ struct abov_tk_info {
 	bool dual_mode;
 };
 
+static struct dc_motor_drvdata *vib_dev;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void abov_tk_early_suspend(struct early_suspend *h);
@@ -132,6 +135,97 @@ static int abov_tk_input_open(struct input_dev *dev);
 static void abov_tk_input_close(struct input_dev *dev);
 static void abov_tk_dual_detection_mode(struct abov_tk_info *info, int mode);
 #endif
+
+/*****************************************/
+// Initialize abov touckey sysfs folder
+/*****************************************/
+
+static int abov_must_vibrate = 0;
+
+static ssize_t abov_vibrate_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	// print current value
+	return sprintf(buf, "%d", abov_must_vibrate);
+}
+
+
+static ssize_t abov_vibrate_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	int val;
+
+	// read values from input buffer
+	ret = sscanf(buf, "%d", &val);
+
+    if (ret != 1)
+        return -EINVAL;
+
+	// store if valid data and only if status has changed, reset all values
+	if (((val == 0) || (val == 1))&& (val != abov_must_vibrate))
+	{
+		// print debug info
+		printk("abov_vibrate: status %d\n", abov_must_vibrate);
+
+		abov_must_vibrate = val;
+	}
+
+	return count;
+}
+
+// define objects
+static DEVICE_ATTR(vibrate, S_IRUGO | S_IWUGO, abov_vibrate_show, abov_vibrate_store);
+
+// define attributes
+static struct attribute *abov_touckey_attributes[] = {
+	&dev_attr_vibrate.attr,
+	NULL
+};
+
+// define attribute group
+static struct attribute_group abov_touckey_control_group = {
+	.attrs = abov_touckey_attributes,
+};
+
+// define control device
+static struct miscdevice abov_touckey_control_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "abov_touckey",
+};
+
+static int abov_init_sysfs(void)
+{
+	// register control device
+	misc_register(&abov_touckey_control_device);
+	if (sysfs_create_group(&abov_touckey_control_device.this_device->kobj,
+				&abov_touckey_control_group) < 0) {
+		printk("abov_touckey: failed to create sys fs object.\n");
+		return 0;
+	}
+}
+
+static int abov_remove_sysfs(void)
+{
+	sysfs_remove_group(&abov_touckey_control_device.this_device->kobj,
+                           &abov_touckey_control_group);
+}
+
+
+void abov_vibrate(int value)
+{
+	if (vib_dev)
+	{
+		printk(KERN_INFO "%s: [VIB]Timeout: %d\n", __func__, value);
+		vib_dev->dev.enable(&vib_dev->dev, value);
+	}
+}
+
+void abov_setvibdev(struct dc_motor_drvdata *vib_device) 
+{
+	vib_dev = vib_device;
+	printk(KERN_INFO "%s: Above softkey Specific vibrator device received\n", __func__);
+}
+
 
 static int abov_glove_mode_enable(struct i2c_client *client, u8 cmd)
 {
@@ -357,10 +451,12 @@ static irqreturn_t abov_tk_interrupt(int irq, void *dev_id)
 	if (menu_data)
 	{
 	input_report_key(info->input_dev,touchkey_keycode[1], menu_press);
+	if (menu_press && abov_must_vibrate) { abov_vibrate(55); }
 	}
 	if (back_data)
 	{
 	input_report_key(info->input_dev,touchkey_keycode[2], back_press);
+	if (back_press && abov_must_vibrate) { abov_vibrate(55); }
 	}
 #ifdef CONFIG_SAMSUNG_PRODUCT_SHIP
 		dev_notice(&client->dev,
@@ -1605,11 +1701,13 @@ static struct i2c_driver abov_tk_driver = {
 
 static int __init touchkey_init(void)
 {
+	abov_init_sysfs();
 	return i2c_add_driver(&abov_tk_driver);
 }
 
 static void __exit touchkey_exit(void)
 {
+	abov_remove_sysfs();
 	i2c_del_driver(&abov_tk_driver);
 }
 

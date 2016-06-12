@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/timed_output.h>
 #include <linux/dc_motor.h>
+#include <linux/i2c/abov_touchkey.h>
 #include <linux/fs.h>
 #ifdef CYTTSP5_DT2W
 #include <linux/cyttsp5/cyttsp5_core.h>
@@ -134,6 +135,7 @@ static int __devinit dc_motor_driver_probe(struct platform_device *pdev)
 			"[VIB] Failed to register timed_output : -%d\n", ret);
 		goto err_to_dev_reg;
 	}
+	abov_setvibdev(ddata);
 #ifdef CYTTSP5_DT2W
 	cyttsp5_setvibdev(ddata);
 #endif

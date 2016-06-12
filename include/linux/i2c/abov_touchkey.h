@@ -20,6 +20,7 @@
 
 #define ABOV_TK_NAME "abov-touchkey"
 #define ABOV_ID 0x40
+#include <linux/dc_motor.h>
 
 struct abov_touchkey_platform_data {
 	unsigned long irq_flag;
@@ -35,5 +36,7 @@ struct abov_touchkey_platform_data {
 	u8 checksum_h;
 	u8 checksum_l;
 };
+
+void abov_setvibdev(struct dc_motor_drvdata *vib_device);
 
 #endif /* LINUX_ABOV_TOUCHKEY_H */
