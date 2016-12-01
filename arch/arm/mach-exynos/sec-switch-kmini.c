@@ -190,6 +190,7 @@ static void muic_usb_cb(u8 usb_mode)
 }
 
 int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+int otg_cable_type = POWER_SUPPLY_TYPE_BATTERY; /* no supply or charging */
 
 static int muic_charger_cb(enum muic_attached_dev cable_type)
 {

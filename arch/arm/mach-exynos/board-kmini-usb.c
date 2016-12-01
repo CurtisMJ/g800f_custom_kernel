@@ -20,6 +20,7 @@
 #include <linux/host_notify.h>
 #include <linux/power_supply.h>
 extern int current_cable_type;
+extern int otg_cable_type;
 #endif
 
 static struct exynos4_ohci_platdata smdk4270_ohci_pdata __initdata;
@@ -49,7 +50,7 @@ void otg_accessory_power(int enable)
 	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 	if (on)
-		value.intval = POWER_SUPPLY_TYPE_OTG;
+		value.intval = otg_cable_type;
 	else
 		value.intval = current_cable_type;
 

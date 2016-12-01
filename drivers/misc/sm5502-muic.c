@@ -44,6 +44,9 @@
 static u8 sm5502_log_cnt;
 static u8 sm5502_log[MAX_LOG][3];
 
+#include <linux/power_supply.h>
+extern int otg_cable_type;
+
 static int sm5502_i2c_read_byte(const struct i2c_client *client, u8 command);
 static int sm5502_i2c_write_byte(const struct i2c_client *client,
 			u8 command, u8 value);
@@ -632,6 +635,60 @@ static ssize_t sm5502_muic_set_otg_test(struct device *dev,
 
 	return count;
 }
+
+
+static ssize_t sm5502_muic_show_otg_cable_type(struct device *dev,
+                                           struct device_attribute *attr,
+                                           char *buf)
+{
+    switch (otg_cable_type) {
+    case POWER_SUPPLY_TYPE_BATTERY:
+        return sprintf(buf, "BATTERY\n");
+    case POWER_SUPPLY_TYPE_OTG:
+        return sprintf(buf, "OTG\n");
+    case POWER_SUPPLY_TYPE_USB:
+        return sprintf(buf, "USB\n");
+    default:
+        return sprintf(buf, "UNKNOWN\n");
+    }
+}
+
+static int detach_otg_usb(struct sm5502_muic_data *muic_data);
+static int attach_otg_usb(struct sm5502_muic_data *muic_data,
+            enum muic_attached_dev new_dev);
+
+static ssize_t sm5502_muic_set_otg_cable_type(struct device *dev,
+                struct device_attribute *attr,
+                const char *buf, size_t count)
+{
+    struct sm5502_muic_data *muic_data = dev_get_drvdata(dev);
+        
+    int new_cable_type;
+    if (!strncasecmp(buf, "BATTERY", 7)) {
+        new_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+    } else if (!strncasecmp(buf, "OTG", 3)) {
+        new_cable_type = POWER_SUPPLY_TYPE_OTG;
+    } else if (!strncasecmp(buf, "USB", 3)) {
+        new_cable_type = POWER_SUPPLY_TYPE_USB;
+    } else {
+        pr_warn("%s: invalid value\n", __func__);
+        new_cable_type = -1;
+    }
+    
+    /* set new cable type and restart USB if OTG gadget is already connected */
+    if (new_cable_type != -1 && new_cable_type != otg_cable_type) {
+        bool connected = (muic_data->attached_dev == ATTACHED_DEV_OTG_MUIC);
+        if (connected) {
+            detach_otg_usb(muic_data);
+        }
+        otg_cable_type = new_cable_type;
+        if (connected) {
+            attach_otg_usb(muic_data, ATTACHED_DEV_OTG_MUIC);
+        }
+    }
+        
+    return count;
+}
 #endif
 
 static ssize_t sm5502_muic_show_attached_dev(struct device *dev,
@@ -749,6 +806,8 @@ static DEVICE_ATTR(usb_state, 0664, sm5502_muic_show_usb_state, NULL);
 #if defined(CONFIG_USB_HOST_NOTIFY)
 static DEVICE_ATTR(otg_test, 0664,
 		sm5502_muic_show_otg_test, sm5502_muic_set_otg_test);
+static DEVICE_ATTR(otg_cable_type, 0664,
+                sm5502_muic_show_otg_cable_type, sm5502_muic_set_otg_cable_type);
 #endif
 static DEVICE_ATTR(attached_dev, 0664, sm5502_muic_show_attached_dev, NULL);
 static DEVICE_ATTR(audio_path, 0664,
@@ -771,6 +830,7 @@ static struct attribute *sm5502_muic_attributes[] = {
 	&dev_attr_usb_state.attr,
 #if defined(CONFIG_USB_HOST_NOTIFY)
 	&dev_attr_otg_test.attr,
+    &dev_attr_otg_cable_type.attr,
 #endif
 	&dev_attr_attached_dev.attr,
 	&dev_attr_audio_path.attr,
