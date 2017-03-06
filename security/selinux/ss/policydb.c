@@ -149,26 +149,6 @@ static struct policydb_compat_info policydb_compat[] = {
 		.ocon_num	= OCON_NUM,
 	},
 	{
-		.version	= POLICYDB_VERSION_XPERMS_IOCTL,
-		.sym_num	= SYM_NUM,
-		.ocon_num	= OCON_NUM,
-	},
-	{
-		.version	= POLICYDB_VERSION_NEW_OBJECT_DEFAULTS,
-		.sym_num	= SYM_NUM,
-		.ocon_num	= OCON_NUM,
-	},
-	{
-		.version	= POLICYDB_VERSION_DEFAULT_TYPE,
-		.sym_num	= SYM_NUM,
-		.ocon_num	= OCON_NUM,
-	},
-	{
-		.version	= POLICYDB_VERSION_CONSTRAINT_NAMES,
-		.sym_num	= SYM_NUM,
-		.ocon_num	= OCON_NUM,
-	},
-	{
 		.version	= POLICYDB_VERSION_IOCTL_OPERATIONS,
 		.sym_num	= SYM_NUM,
 		.ocon_num	= OCON_NUM,
@@ -641,19 +621,6 @@ static int common_destroy(void *key, void *datum, void *p)
 	}
 	kfree(datum);
 	return 0;
-}
-
-static void constraint_expr_destroy(struct constraint_expr *expr)
-{
-	if (expr) {
-		ebitmap_destroy(&expr->names);
-		if (expr->type_names) {
-			ebitmap_destroy(&expr->type_names->types);
-			ebitmap_destroy(&expr->type_names->negset);
-			kfree(expr->type_names);
-		}
-		kfree(expr);
-	}
 }
 
 
@@ -1368,7 +1335,7 @@ static int class_read(struct policydb *p, struct hashtab *h, void *fp)
 
 	ncons = le32_to_cpu(buf[5]);
 
-    rc = str_read(&key, GFP_KERNEL, fp, len);
+	rc = str_read(&key, GFP_KERNEL, fp, len);
 	if (rc)
 		goto bad;
 
@@ -1534,6 +1501,9 @@ static int type_read(struct policydb *p, struct hashtab *h, void *fp)
 		goto bad;
 	return 0;
 bad:
+#ifndef CONFIG_ALWAYS_ENFORCE
+	panic("SELinux:Failed to type read");
+#endif /*CONFIG_ALWAYS_ENFORCE*/
 	type_destroy(key, typdatum, NULL);
 	return rc;
 }
@@ -1999,19 +1969,7 @@ static int filename_trans_read(struct policydb *p, void *fp)
 		if (rc)
 			goto out;
 
-		rc = hashtab_insert(p->filename_trans, ft, otype);
-		if (rc) {
-			/*
-			 * Do not return -EEXIST to the caller, or the system
-			 * will not boot.
-			 */
-			if (rc != -EEXIST)
-				goto out;
-			/* But free memory to avoid memory leak. */
-			kfree(ft);
-			kfree(name);
-			kfree(otype);
-		}
+		hashtab_insert(p->filename_trans, ft, otype);
 	}
 	hash_eval(p->filename_trans, "filenametr");
 	return 0;
@@ -2222,6 +2180,7 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
 				if (c->v.behavior > SECURITY_FS_USE_NONE)
 					goto out;
 
+				len = le32_to_cpu(buf[1]);
 				rc = str_read(&c->u.name, GFP_KERNEL, fp, len);
 				if (rc)
 					goto out;
@@ -2538,6 +2497,9 @@ int policydb_read(struct policydb *p, void *fp)
 out:
 	return rc;
 bad:
+#ifndef CONFIG_ALWAYS_ENFORCE
+	panic("SELinux:Failed to load policy");
+#endif /*CONFIG_ALWAYS_ENFORCE*/
 	policydb_destroy(p);
 	goto out;
 }
@@ -3108,18 +3070,6 @@ static int ocontext_write(struct policydb *p, struct policydb_compat_info *info,
 				rc = context_write(p, &c->context[0], fp);
 				if (rc)
 					return rc;
-				if (p->policyvers >=
-					POLICYDB_VERSION_CONSTRAINT_NAMES) {
-						e->type_names = kzalloc(sizeof
-						(*e->type_names),
-						GFP_KERNEL);
-					if (!e->type_names)
-						return -ENOMEM;
-					type_set_init(e->type_names);
-					rc = type_set_read(e->type_names, fp);
-					if (rc)
-						return rc;
-				}
 				break;
 			case OCON_FS:
 			case OCON_NETIF:
@@ -3184,12 +3134,6 @@ static int ocontext_write(struct policydb *p, struct policydb_compat_info *info,
 				rc = context_write(p, &c->context[0], fp);
 				if (rc)
 					return rc;
-				if (p->policyvers >=
-					POLICYDB_VERSION_CONSTRAINT_NAMES) {
-					rc = type_set_write(e->type_names, fp);
-					if (rc)
-						return rc;
-				}
 				break;
 			}
 		}
@@ -3282,23 +3226,6 @@ static int range_write_helper(void *key, void *data, void *ptr)
 	if (rc)
 		return rc;
 
-	if (p->policyvers >= POLICYDB_VERSION_NEW_OBJECT_DEFAULTS) {
-		buf[0] = cpu_to_le32(cladatum->default_user);
-		buf[1] = cpu_to_le32(cladatum->default_role);
-		buf[2] = cpu_to_le32(cladatum->default_range);
-
-		rc = put_entry(buf, sizeof(uint32_t), 3, fp);
-		if (rc)
-			return rc;
-	}
-
-	if (p->policyvers >= POLICYDB_VERSION_DEFAULT_TYPE) {
-		buf[0] = cpu_to_le32(cladatum->default_type);
-		rc = put_entry(buf, sizeof(uint32_t), 1, fp);
-		if (rc)
-			return rc;
-	}
-
 	return 0;
 }
 
@@ -3350,10 +3277,10 @@ static int filename_write_helper(void *key, void *data, void *ptr)
 	if (rc)
 		return rc;
 
-	buf[0] = cpu_to_le32(ft->stype);
-	buf[1] = cpu_to_le32(ft->ttype);
-	buf[2] = cpu_to_le32(ft->tclass);
-	buf[3] = cpu_to_le32(otype->otype);
+	buf[0] = ft->stype;
+	buf[1] = ft->ttype;
+	buf[2] = ft->tclass;
+	buf[3] = otype->otype;
 
 	rc = put_entry(buf, sizeof(u32), 4, fp);
 	if (rc)
