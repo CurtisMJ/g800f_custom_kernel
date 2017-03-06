@@ -44,8 +44,6 @@ struct max77803_haptic_data {
 	bool resumed;
 };
 
-struct max77803_haptic_data *g_hap_data;
-
 static void max77803_haptic_i2c(struct max77803_haptic_data *hap_data, bool en)
 {
 	int ret;
@@ -182,80 +180,7 @@ static void haptic_work(struct work_struct *work)
 	return;
 }
 
-#ifdef CONFIG_VIBETONZ
-void vibtonz_en(bool en)
-{
-	if (g_hap_data == NULL) {
-		printk(KERN_ERR "[VIB] the motor is not ready!!!");
-		return ;
-	}
 
-	if (en) {
-		if (g_hap_data->running)
-			return;
-
-		max77803_haptic_i2c(g_hap_data, true);
-
-		//must set pwm after resume. this may be workaround..
-		if(g_hap_data->resumed)
-		{
-			pwm_config(g_hap_data->pwm, g_hap_data->pdata->period/2, g_hap_data->pdata->period);
-			g_hap_data->resumed = false;
-		}
-
-		pwm_enable(g_hap_data->pwm);
-
-		if (g_hap_data->pdata->motor_en)
-			g_hap_data->pdata->motor_en(true);
-		else
-			regulator_enable(g_hap_data->regulator);
-
-		g_hap_data->running = true;
-	} else {
-		if (!g_hap_data->running)
-			return;
-
-		if (g_hap_data->pdata->motor_en)
-			g_hap_data->pdata->motor_en(false);
-		else
-			regulator_disable(g_hap_data->regulator);
-
-		pwm_disable(g_hap_data->pwm);
-
-		max77803_haptic_i2c(g_hap_data, false);
-
-		g_hap_data->running = false;
-	}
-}
-EXPORT_SYMBOL(vibtonz_en);
-
-void vibtonz_pwm(int nForce)
-{
-	/* add to avoid the glitch issue */
-	static int prev_duty;
-	int pwm_period = 0, pwm_duty = 0;
-
-	if (g_hap_data == NULL) {
-		printk(KERN_ERR "[VIB] the motor is not ready!!!");
-		return ;
-	}
-
-	pwm_period = g_hap_data->pdata->period;
-	pwm_duty = pwm_period / 2 + ((pwm_period / 2 - 2) * nForce) / 127;
-
-	if (pwm_duty > g_hap_data->pdata->duty)
-		pwm_duty = g_hap_data->pdata->duty;
-	else if (pwm_period - pwm_duty > g_hap_data->pdata->duty)
-		pwm_duty = pwm_period - g_hap_data->pdata->duty;
-
-	/* add to avoid the glitch issue */
-	if (prev_duty != pwm_duty) {
-		prev_duty = pwm_duty;
-		pwm_config(g_hap_data->pwm, pwm_duty, pwm_period);
-	}
-}
-EXPORT_SYMBOL(vibtonz_pwm);
-#endif
 
 static int max77803_haptic_probe(struct platform_device *pdev)
 {
@@ -278,7 +203,6 @@ static int max77803_haptic_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	platform_set_drvdata(pdev, hap_data);
-	g_hap_data = hap_data;
 	hap_data->max77803 = max77803;
 	hap_data->i2c = max77803->haptic;
 	hap_data->pmic_i2c = max77803->i2c;
@@ -321,14 +245,12 @@ static int max77803_haptic_probe(struct platform_device *pdev)
 
 	hap_data->resumed = false;
 
-#ifdef CONFIG_ANDROID_TIMED_OUTPUT
 	error = timed_output_dev_register(&hap_data->tout_dev);
 	if (error < 0) {
 		pr_err("[VIB] Failed to register timed_output : %d\n", error);
 		error = -EFAULT;
 		goto err_timed_output_register;
 	}
-#endif
 
 	pr_debug("[VIB] -- %s\n", __func__);
 
@@ -340,21 +262,17 @@ err_regulator_get:
 	pwm_free(hap_data->pwm);
 err_pwm_request:
 	kfree(hap_data);
-	g_hap_data = NULL;
 	return error;
 }
 
 static int __devexit max77803_haptic_remove(struct platform_device *pdev)
 {
 	struct max77803_haptic_data *data = platform_get_drvdata(pdev);
-#ifdef CONFIG_ANDROID_TIMED_OUTPUT
 	timed_output_dev_unregister(&data->tout_dev);
-#endif
 	regulator_put(data->regulator);
 	pwm_free(data->pwm);
 	destroy_workqueue(data->workqueue);
 	kfree(data);
-	g_hap_data = NULL;
 
 	return 0;
 }
@@ -368,7 +286,6 @@ static int max77803_haptic_suspend(struct platform_device *pdev,
 static int max77803_haptic_resume(struct platform_device *pdev)
 {
 	vibetonz_clk_on(&pdev->dev, true);
-	g_hap_data->resumed = true;
 	return 0;
 }
 

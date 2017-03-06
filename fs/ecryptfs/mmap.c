@@ -66,17 +66,17 @@ static int ecryptfs_writepage(struct page *page, struct writeback_control *wbc)
 {
 	int rc;
 
-    // WTL_EDM_START
-    /* MDM 3.1 START */
-    struct inode *inode;
-    struct ecryptfs_crypt_stat *crypt_stat;
+	// WTL_EDM_START
+	/* MDM 3.1 START */
+	struct inode *inode;
+	struct ecryptfs_crypt_stat *crypt_stat;
 
-    inode = page->mapping->host;
-    crypt_stat = &ecryptfs_inode_to_private(inode)->crypt_stat;
-    if (!(crypt_stat->flags & ECRYPTFS_ENCRYPTED)) {
-	    size_t size;
-	    loff_t file_size = i_size_read(inode);
-	    pgoff_t end_page_index = file_size >> PAGE_CACHE_SHIFT;
+	inode = page->mapping->host;
+	crypt_stat = &ecryptfs_inode_to_private(inode)->crypt_stat;
+	if (!(crypt_stat->flags & ECRYPTFS_ENCRYPTED)) {
+		size_t size;
+		loff_t file_size = i_size_read(inode);
+		pgoff_t end_page_index = file_size >> PAGE_CACHE_SHIFT;
 		if (end_page_index < page->index)
 			size = 0;
 		else if (end_page_index == page->index)
@@ -91,9 +91,9 @@ static int ecryptfs_writepage(struct page *page, struct writeback_control *wbc)
 		} else
 			SetPageUptodate(page);
 		goto out;
-    }
-    /* MDM 3.1 END */
-    // WTL_EDM_END
+	}
+	/* MDM 3.1 END */
+	// WTL_EDM_END
 
 	rc = ecryptfs_encrypt_page(page);
 	if (rc) {

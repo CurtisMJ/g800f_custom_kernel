@@ -448,6 +448,20 @@ struct sec_battery_platform_data {
 	/* for initial check */
 	unsigned int monitor_initial_count;
 
+#if defined(CONFIG_BATTERY_SWELLING)
+	/* battery swelling */
+	int swelling_high_temp_block;
+	int swelling_high_temp_recov;
+	int swelling_low_temp_block;
+	int swelling_low_temp_recov;
+	unsigned int swelling_normal_float_voltage;
+	unsigned int swelling_drop_float_voltage;
+	unsigned int swelling_high_rechg_voltage;
+	unsigned int swelling_low_rechg_voltage;
+	unsigned int swelling_low_temp_current;
+	unsigned int swelling_high_temp_current;
+#endif
+
 	/* Battery check */
 	sec_battery_check_t battery_check_type;
 	/* how many times do we need to check battery */

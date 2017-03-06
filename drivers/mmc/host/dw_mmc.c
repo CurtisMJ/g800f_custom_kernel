@@ -114,6 +114,7 @@ static const u8 tuning_blk_pattern_8bit[] = {
 #define MAX_RETRY_CNT	5
 #define DRTO		200
 #define DRTO_MON_PERIOD	50
+#define DW_MCI_BUSY_WAIT_TIMEOUT	250
 
 #if defined(CONFIG_MMC_DW_CMD_LOGGING)
 #define DWMCI_LOG_MAX	2048	/* 0x800 */
@@ -1254,7 +1255,7 @@ static void dw_mci_submit_data(struct dw_mci *host, struct mmc_data *data)
 static bool dw_mci_wait_data_busy(struct dw_mci *host, struct mmc_request *mrq)
 {
 	u32 status;
-	unsigned long timeout = jiffies + msecs_to_jiffies(500);
+	unsigned long timeout = jiffies + msecs_to_jiffies(DW_MCI_BUSY_WAIT_TIMEOUT);
 	struct dw_mci_slot *slot = host->cur_slot;
 	int try = 2;
 	u32 clkena;
@@ -1286,7 +1287,7 @@ static bool dw_mci_wait_data_busy(struct dw_mci *host, struct mmc_request *mrq)
 			mci_send_cmd(host->cur_slot,
 				SDMMC_CMD_UPD_CLK | SDMMC_CMD_PRV_DAT_WAIT, 0);
 		}
-		timeout = jiffies + msecs_to_jiffies(500);
+		timeout = jiffies + msecs_to_jiffies(DW_MCI_BUSY_WAIT_TIMEOUT);
 	} while (--try);
 out:
 	if (host->cur_slot) {
@@ -3537,6 +3538,10 @@ static int __devinit dw_mci_init_slot(struct dw_mci *host, unsigned int id)
 		mmc->caps2 = host->pdata->caps2;
 	else
 		mmc->caps2 = 0;
+
+	/* enable detect on err feature for sd card */
+	if (host->pdata->cd_type == DW_MCI_CD_GPIO)
+		mmc->caps2 |= MMC_CAP2_DETECT_ON_ERR;
 
 	if (host->pdata->pm_caps) {
 		mmc->pm_caps |= host->pdata->pm_caps;

@@ -26,8 +26,14 @@
 #define WLAN_STATIC_SCAN_BUF0		5
 #define WLAN_STATIC_SCAN_BUF1		6
 #define WLAN_STATIC_DHD_INFO_BUF	7
+#define WLAN_STATIC_DHD_WLFC_INFO	8
+#define WLAN_STATIC_DHD_WLFC_HANGER	9
+
 #define WLAN_SCAN_BUF_SIZE		(64 * 1024)
-#define WLAN_DHD_INFO_BUF_SIZE	(16 * 1024)
+#define WLAN_DHD_INFO_BUF_SIZE		   (24 * 1024)
+#define WLAN_STATIC_DHD_WLFC_INFO_SIZE	   (64 * 1024)
+#define WLAN_STATIC_DHD_WLFC_HANGER_SIZE    (64 * 1024)
+
 #define PREALLOC_WLAN_SEC_NUM		4
 #define PREALLOC_WLAN_BUF_NUM		160
 #define PREALLOC_WLAN_SECTION_HEADER	24
@@ -55,7 +61,7 @@ struct wlan_mem_prealloc {
 #if defined(CONFIG_BCM4334)
 static struct dw_mci_mon_table exynos_dwmci_tp_mon1_tbl[] = {
         /* Byte/s, MIF clk, CPU clk */
-        {  6000000, 400000, 1200000},
+        {  4500000, 400000, 1200000},
         {  3000000,      0,  800000},
         {        0,      0,       0},
 };
@@ -77,7 +83,10 @@ static struct wlan_mem_prealloc wlan_mem_array[PREALLOC_WLAN_SEC_NUM] = {
 
 void *wlan_static_scan_buf0;
 void *wlan_static_scan_buf1;
-void *wlan_static_dhd_info_buf;
+void *wlan_static_dhd_info_buf = NULL;
+void *wlan_static_dhd_wlfc_buf = NULL;
+void *wlan_static_dhd_wlfc_hanger_buf = NULL;
+
 
 static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 {
@@ -97,6 +106,26 @@ static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 		}
 		return wlan_static_dhd_info_buf;
 	}
+	
+	if (section == WLAN_STATIC_DHD_WLFC_INFO)  {
+		if (size > WLAN_STATIC_DHD_WLFC_INFO_SIZE) {
+			pr_err("request DHD_WLFC_INFO size(%lu) is bigger than"
+				" static size(%d).\n",
+				size, WLAN_STATIC_DHD_WLFC_INFO_SIZE);
+			return NULL;
+		}
+		return wlan_static_dhd_wlfc_buf;
+	}
+
+	if (section == WLAN_STATIC_DHD_WLFC_HANGER)  {
+		if (size > WLAN_STATIC_DHD_WLFC_HANGER_SIZE) {
+			pr_err("request DHD_WLFC_HANGER size(%lu) is bigger than"
+				" static size(%d).\n",
+				size, WLAN_STATIC_DHD_WLFC_HANGER_SIZE);
+			return NULL;
+		}
+		return wlan_static_dhd_wlfc_hanger_buf;
+	}	
 
 	if ((section < 0) || (section > PREALLOC_WLAN_SEC_NUM))
 		return NULL;
@@ -147,6 +176,16 @@ static int brcm_init_wlan_mem(void)
 	wlan_static_dhd_info_buf = kmalloc(WLAN_DHD_INFO_BUF_SIZE, GFP_KERNEL);
 	if (!wlan_static_dhd_info_buf)
 		goto err_mem_alloc;
+
+	wlan_static_dhd_wlfc_buf = kmalloc(WLAN_STATIC_DHD_WLFC_INFO_SIZE, GFP_KERNEL);
+	if (!wlan_static_dhd_wlfc_buf) {
+		goto err_mem_alloc;
+	}
+
+	wlan_static_dhd_wlfc_hanger_buf = kmalloc(WLAN_STATIC_DHD_WLFC_HANGER_SIZE, GFP_KERNEL);
+	if (!wlan_static_dhd_wlfc_hanger_buf) {
+		goto err_mem_alloc;
+	}
 
 	printk(KERN_INFO"%s: WIFI MEM Allocated\n", __func__);
 	return 0;

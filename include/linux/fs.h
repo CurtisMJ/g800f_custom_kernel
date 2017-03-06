@@ -114,6 +114,12 @@ struct inodes_stat_t {
 /* File is opened with O_PATH; almost nothing can be done with it */
 #define FMODE_PATH		((__force fmode_t)0x4000)
 
+/* File hasn't page cache and can't be mmaped, for stackable filesystem */
+#define FMODE_NONMAPPABLE        ((__force fmode_t)0x400000)
+
+/* File page don't need to be cached, for stackable filesystem's lower file */
+#define FMODE_NONCACHEABLE		((__force fmode_t)0x800000)
+
 /* File was opened by fanotify and shouldn't generate fanotify events */
 #define FMODE_NONOTIFY		((__force fmode_t)0x1000000)
 
@@ -1651,6 +1657,8 @@ struct file_operations {
 	int (*setlease)(struct file *, long, struct file_lock **);
 	long (*fallocate)(struct file *file, int mode, loff_t offset,
 			  loff_t len);
+		/* get_lower_file is for stackable file system */
+	struct file* (*get_lower_file)(struct file *f);
 };
 
 struct inode_operations {
@@ -1681,6 +1689,7 @@ struct inode_operations {
 	void (*truncate_range)(struct inode *, loff_t, loff_t);
 	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
 		      u64 len);
+	int (*update_time)(struct inode *, struct timespec *, int);
 } ____cacheline_aligned;
 
 struct seq_file;
@@ -1726,6 +1735,7 @@ struct super_operations {
 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
 	int (*nr_cached_objects)(struct super_block *);
 	void (*free_cached_objects)(struct super_block *, int);
+	long (*unlink_callback)(struct super_block *, char *);
 };
 
 /*
@@ -1839,6 +1849,13 @@ static inline void inode_inc_iversion(struct inode *inode)
        spin_unlock(&inode->i_lock);
 }
 
+enum file_time_flags {
+	S_ATIME = 1,
+	S_MTIME = 2,
+	S_CTIME = 4,
+	S_VERSION = 8,
+};
+
 extern void touch_atime(struct path *);
 static inline void file_accessed(struct file *file)
 {
@@ -1852,6 +1869,13 @@ int sync_inode_metadata(struct inode *inode, int wait);
 struct file_system_type {
 	const char *name;
 	int fs_flags;
+#define FS_REQUIRES_DEV		1 
+#define FS_BINARY_MOUNTDATA	2
+#define FS_HAS_SUBTYPE		4
+#define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
+#define FS_USERNS_DEV_MOUNT	16 /* A userns mount does not imply MNT_NODEV */
+#define FS_REVAL_DOT		16384	/* Check the paths ".", ".." for staleness */
+#define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
 	struct dentry *(*mount) (struct file_system_type *, int,
 		       const char *, void *);
 	void (*kill_sb) (struct super_block *);
@@ -2575,7 +2599,7 @@ extern int inode_change_ok(const struct inode *, struct iattr *);
 extern int inode_newsize_ok(const struct inode *, loff_t offset);
 extern void setattr_copy(struct inode *inode, const struct iattr *attr);
 
-extern void file_update_time(struct file *file);
+extern int file_update_time(struct file *file);
 
 extern int generic_show_options(struct seq_file *m, struct dentry *root);
 extern void save_mount_options(struct super_block *sb, char *options);

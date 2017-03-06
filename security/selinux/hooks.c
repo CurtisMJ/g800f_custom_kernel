@@ -84,6 +84,10 @@
 #include <linux/msg.h>
 #include <linux/shm.h>
 
+// [ SEC_SELINUX_PORTING COMMON
+#include <linux/delay.h>
+// ] SEC_SELINUX_PORTING COMMON
+
 #include "avc.h"
 #include "objsec.h"
 #include "netif.h"
@@ -438,6 +442,13 @@ static int sb_finish_set_opts(struct super_block *sb)
 	if (strncmp(sb->s_type->name, "rootfs", sizeof("rootfs")) == 0)
 		sbsec->flags |= SE_SBLABELSUPP;
 
+	/*
+	 * Special handling for rootfs. Is genfs but supports
+	 * setting SELinux context on in-core inodes.
+	 */
+	if (strncmp(sb->s_type->name, "rootfs", sizeof("rootfs")) == 0)
+		sbsec->flags |= SE_SBLABELSUPP;
+		
 	/* Initialize the root inode. */
 	rc = inode_doinit_with_dentry(root_inode, root);
 
@@ -1536,6 +1547,25 @@ static int inode_has_perm(const struct cred *cred,
 
 	sid = cred_sid(cred);
 	isec = inode->i_security;
+
+// [ SEC_SELINUX_PORTING COMMON
+	/* skip sid == 1(kernel), it means first boot time */
+	if(isec->initialized != 1 && sid != 1) {
+		int count = 5;
+
+		while(count-- > 0) {
+			printk(KERN_ERR "SELinux : inode->i_security is not initialized. waiting...(%d/5)\n", 5-count); 
+			udelay(500);
+			if(isec->initialized == 1) {
+				printk(KERN_ERR "SELinux : inode->i_security is INITIALIZED.\n"); 
+				break;
+			}
+		}
+		if(isec->initialized != 1) {
+			printk(KERN_ERR "SELinux : inode->i_security is not initialized. not fixed.\n"); 
+		}
+	}
+// ] SEC_SELINUX_PORTING COMMON
 
 	if (unlikely(!isec)){
 		printk(KERN_CRIT "[SELinux] isec is NULL, inode->i_security is already freed. \n");
@@ -3141,6 +3171,46 @@ int ioctl_has_perm(const struct cred *cred, struct file *file,
 
 	rc = avc_has_extended_perms(ssid, isec->sid, isec->sclass,
 			requested, driver, xperm, &ad);
+out:
+	return rc;
+}
+
+/*
+ * Check whether a task has the ioctl permission and cmd
+ * operation to an inode.
+ */
+int ioctl_has_perm(const struct cred *cred, struct file *file,
+		u32 requested, u16 cmd)
+{
+	struct common_audit_data ad;
+	struct file_security_struct *fsec = file->f_security;
+    struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode_security_struct *isec = inode->i_security;
+	struct lsm_ioctlop_audit ioctl;
+	u32 ssid = cred_sid(cred);
+	struct selinux_audit_data sad = {0,};
+	int rc;
+
+	COMMON_AUDIT_DATA_INIT(&ad, IOCTL_OP);
+	ad.u.op = &ioctl;
+	ad.u.op->cmd = cmd;
+	ad.u.op->path = file->f_path;
+	ad.selinux_audit_data = &sad;
+
+	if (ssid != fsec->sid) {
+		rc = avc_has_perm(ssid, fsec->sid,
+				SECCLASS_FD,
+				FD__USE,
+				&ad);
+		if (rc)
+			goto out;
+	}
+
+	if (unlikely(IS_PRIVATE(inode)))
+		return 0;
+
+	rc = avc_has_operation(ssid, isec->sid, isec->sclass,
+			requested, cmd, &ad);
 out:
 	return rc;
 }

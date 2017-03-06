@@ -423,7 +423,8 @@ static struct dw_mci_board smdk4270_dwmci2_pdata __initdata = {
 	.caps			= MMC_CAP_4_BIT_DATA |
 				  MMC_CAP_SD_HIGHSPEED |
 				  MMC_CAP_MMC_HIGHSPEED |
-				  MMC_CAP_UHS_SDR50,
+				  MMC_CAP_UHS_SDR50 |
+  				  MMC_CAP_CMD23,
 	.caps2			= MMC_CAP2_DETECT_ON_ERR,
 	.fifo_depth		= 0x80,
 	.detect_delay_ms	= 200,

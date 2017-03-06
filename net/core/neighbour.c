@@ -713,7 +713,7 @@ void neigh_destroy(struct neighbour *neigh)
 
 	if (!neigh->dead) {
 		printk(KERN_WARNING
-		       "Destroying alive neighbour %p\n", neigh);
+		       "Destroying alive neighbour %pK\n", neigh);
 		dump_stack();
 		return;
 	}
@@ -1310,7 +1310,7 @@ int neigh_resolve_output(struct neighbour *neigh, struct sk_buff *skb)
 out:
 	return rc;
 discard:
-	NEIGH_PRINTK1("neigh_resolve_output: dst=%p neigh=%p\n",
+	NEIGH_PRINTK1("neigh_resolve_output: dst=%pK neigh=%pK\n",
 		      dst, neigh);
 out_kfree_skb:
 	rc = -EINVAL;

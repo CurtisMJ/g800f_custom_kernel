@@ -2006,15 +2006,15 @@ static inline int s5p_mfc_run_init_dec(struct s5p_mfc_ctx *ctx)
 		temp_vb->vb.v4l2_planes[0].bytesused, temp_vb->consumed);
 
 	if (dec && temp_vb->vb.v4l2_planes[0].bytesused < dec->src_buf_size) {
-		if (temp_vb->consumed)
-			s5p_mfc_set_dec_stream_buffer(ctx,
-					s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
-					temp_vb->consumed,
-					temp_vb->vb.v4l2_planes[0].bytesused - temp_vb->consumed);
-		else
-			s5p_mfc_set_dec_stream_buffer(ctx,
-					s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
-					0, temp_vb->vb.v4l2_planes[0].bytesused);
+	if (temp_vb->consumed)
+		s5p_mfc_set_dec_stream_buffer(ctx,
+			s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
+			temp_vb->consumed,
+			temp_vb->vb.v4l2_planes[0].bytesused - temp_vb->consumed);
+	else
+		s5p_mfc_set_dec_stream_buffer(ctx,
+			s5p_mfc_mem_plane_addr(ctx, &temp_vb->vb, 0),
+			0, temp_vb->vb.v4l2_planes[0].bytesused);
 	} else {
 		mfc_err("mfc received bytesused: %u compared with src_buf_size: %d\n",
 		temp_vb->vb.v4l2_planes[0].bytesused, dec->src_buf_size);

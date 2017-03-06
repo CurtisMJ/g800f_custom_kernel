@@ -1821,7 +1821,7 @@ err_hw_prot_set:
 err_mem_prot_set:
 	return ret;
 }
-#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 static int s5p_mfc_request_sec_pgtable(struct s5p_mfc_dev *dev)
 {
 	int ret;
@@ -1831,16 +1831,19 @@ static int s5p_mfc_request_sec_pgtable(struct s5p_mfc_dev *dev)
 	ion_exynos_contig_heap_info(ION_EXYNOS_ID_MFC_FW, &base, &size);
 	ret = exynos_smc(SMC_DRM_MAKE_PGTABLE, FC_MFC_EXYNOS_ID_MFC_FW, base, size);
 	if (ret) {
-		mfc_err("Failed to make pgtable for MFC_FW\n");
+		mfc_err("Failed to make pgtable for MFC_FW, base:%#x, size:%#x, ret:%d\n",
+				base, size, ret);
 		return -1;
 	}
 
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
 	ion_exynos_contig_heap_info(ION_EXYNOS_ID_MFC_INPUT, &base, &size);
 	ret = exynos_smc(SMC_DRM_MAKE_PGTABLE, FC_MFC_EXYNOS_ID_MFC_INPUT, base, size);
 	if (ret) {
 		mfc_err("Failed to make pgtable for MFC_INPUT\n");
 		return -1;
 	}
+#endif
 
 #if defined(CONFIG_SOC_EXYNOS5410)
 	ion_exynos_contig_heap_info(ION_EXYNOS_ID_FIMD_VIDEO, &base, &size);
@@ -1856,13 +1859,27 @@ static int s5p_mfc_request_sec_pgtable(struct s5p_mfc_dev *dev)
 		mfc_err("Failed to make pgtable for MFC_OUTPUT\n");
 		return -1;
 	}
-#elif defined(CONFIG_SOC_EXYNOS5420)
+#elif defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 	ion_exynos_contig_heap_info(ION_EXYNOS_ID_VIDEO, &base, &size);
 	ret = exynos_smc(SMC_DRM_MAKE_PGTABLE, FC_MFC_EXYNOS_ID_VIDEO, base, size);
 	if (ret) {
-		mfc_err("Failed to make pgtable for MFC_VIDEO\n");
+		mfc_err("Failed to make pgtable for MFC_VIDEO, base:%#x, size:%#x, ret:%d\n",
+				base, size, ret);
+
 		return -1;
 	}
+#if defined(CONFIG_SOC_EXYNOS3470)
+	ion_exynos_contig_heap_info(ION_EXYNOS_ID_MFC_SH, &base, &size);
+	ret = exynos_smc(SMC_DRM_MAKE_PGTABLE, FC_MFC_EXYNOS_ID_MFC_SH, base, size);
+	if (ret) {
+		mfc_err("Failed to make pgtable for MFC_VIDEO, base:%#x, size:%#x, ret:%d\n",
+				base, size, ret);
+
+		return -1;
+	} else {
+		mfc_debug(1, "MFC_SH page table ok\n");
+	}
+#endif
 #endif
 	return 0;
 }
@@ -1891,7 +1908,7 @@ static int s5p_mfc_open(struct file *file)
 #ifdef CONFIG_EXYNOS_CONTENT_PATH_PROTECTION
 	int magic_offset = -1;
 	enum s5p_mfc_inst_drm_type is_drm = MFCDRM_NONE;
-#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 	phys_addr_t fw_base, sectbl_base;
 	size_t fw_size, sectbl_size;
 #endif
@@ -2035,7 +2052,7 @@ static int s5p_mfc_open(struct file *file)
 				ret = s5p_mfc_alloc_firmware(dev);
 				if (ret)
 					goto err_fw_alloc;
-#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 				ret = s5p_mfc_load_firmware(dev);
 				if (ret)
 					goto err_fw_load;
@@ -2048,7 +2065,7 @@ static int s5p_mfc_open(struct file *file)
 			else
 				dev->is_support_smc = 1;
 			dev->fw_status = 1;
-#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 			ion_exynos_contig_heap_info(ION_EXYNOS_ID_SECTBL,
 						&sectbl_base, &sectbl_size);
 			ion_exynos_contig_heap_info(ION_EXYNOS_ID_MFC_FW, &fw_base, &fw_size);
@@ -2143,7 +2160,7 @@ err_pwr_enable:
 
 err_fw_load:
 #ifdef CONFIG_EXYNOS_CONTENT_PATH_PROTECTION
-#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 		if (dev->is_support_smc) {
 			s5p_mfc_release_sec_pgtable(dev);
 			dev->is_support_smc = 0;
@@ -2312,7 +2329,7 @@ static int s5p_mfc_release(struct file *file)
 #ifdef CONFIG_EXYNOS_CONTENT_PATH_PROTECTION
 					if (ctx->is_drm && dev->is_support_smc) {
 						s5p_mfc_protection_set(dev, 0);
-#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 						s5p_mfc_release_sec_pgtable(dev);
 #endif
 						dev->is_support_smc = 0;
@@ -2352,7 +2369,7 @@ static int s5p_mfc_release(struct file *file)
 #ifdef CONFIG_EXYNOS_CONTENT_PATH_PROTECTION
 		if (ctx->is_drm && dev->is_support_smc) {
 			s5p_mfc_protection_set(dev, 0);
-#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420)
+#if defined(CONFIG_SOC_EXYNOS5410) || defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 			s5p_mfc_release_sec_pgtable(dev);
 #endif
 			dev->is_support_smc = 0;

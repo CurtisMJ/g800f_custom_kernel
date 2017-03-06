@@ -166,6 +166,11 @@ struct sec_battery_info {
 	int test_mode;
 	bool factory_mode;
 	bool slate_mode;
+	bool charging_block;
+#if defined(CONFIG_BATTERY_SWELLING)
+	bool swelling_mode;
+	int swelling_full_check_cnt;
+#endif
 
 	int siop_level;
 #if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
@@ -264,6 +269,9 @@ enum {
 #if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
 	BATT_TEST_CHARGE_CURRENT,
 	BATT_STABILITY_TEST,
+#endif
+#if !defined(CONFIG_DISABLE_SAVE_CAPACITY_MAX)
+	BATT_CAPACITY_MAX,
 #endif
 };
 

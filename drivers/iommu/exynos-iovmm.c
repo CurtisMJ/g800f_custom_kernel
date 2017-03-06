@@ -634,15 +634,17 @@ void iovmm_unmap_oto(struct device *dev, phys_addr_t phys)
 
 int exynos_create_iovmm(struct device *dev, int inplanes, int onplanes)
 {
-	static unsigned long iovmcfg[MAX_NUM_PLANE][MAX_NUM_PLANE] = {
+	static unsigned long iovmcfg[MAX_NUM_PLANE + 1][MAX_NUM_PLANE] = {
 		{IOVM_SIZE, 0, 0, 0, 0, 0},
 		{SZ_2G, IOVM_SIZE - SZ_2G, 0, 0, 0, 0},
 		{SZ_1G + SZ_256M, SZ_1G, SZ_1G, 0, 0, 0},
 		{SZ_1G, SZ_1G + SZ_256M, SZ_512M, SZ_512M , 0, 0},
 		{SZ_1G, SZ_1G, SZ_768M, SZ_256M, SZ_256M, 0},
 		{SZ_1G, SZ_512M, SZ_256M, SZ_768M, SZ_512M, SZ_256M},
+		{SZ_256M, 0, 0, 0, 0, 0}, /* special case for MFC */
 		};
 	int i, nplanes, ret = 0;
+	int cfgsel;
 	size_t sum_iovm = 0;
 	struct exynos_iovmm *vmm;
 	struct exynos_iommu_owner *owner = dev->archdata.iommu;
@@ -650,7 +652,15 @@ int exynos_create_iovmm(struct device *dev, int inplanes, int onplanes)
 	if (owner->vmm_data)
 		return 0;
 
-	nplanes = inplanes + onplanes;
+	/* special case for MFC */
+	if (inplanes > 6) {
+		nplanes = 1;
+		cfgsel = MAX_NUM_PLANE;
+	} else {
+		nplanes = inplanes + onplanes;
+		cfgsel = nplanes - 1;
+	}
+
 	if (WARN_ON(!owner) || nplanes > MAX_NUM_PLANE || nplanes < 1) {
 		ret = -ENOSYS;
 		goto err_alloc_vmm;
@@ -663,7 +673,15 @@ int exynos_create_iovmm(struct device *dev, int inplanes, int onplanes)
 	}
 
 	for (i = 0; i < nplanes; i++) {
-		vmm->iovm_size[i] = iovmcfg[nplanes - 1][i];
+		/*As per MFC5.1 UM only 17 bits of a register is valid
+			due to which there is a size limitation of 256MB */
+#ifdef CONFIG_EXYNOS_MFC_V5
+		if ((!strcmp(dev_name(dev), "s5p-mfc")) && (i == 0))
+			vmm->iovm_size[i] = SZ_256M;
+		else
+#endif
+			vmm->iovm_size[i] = iovmcfg[cfgsel][i];
+
 		vmm->iova_start[i] = IOVA_START + sum_iovm;
 		vmm->vm_map[i] = kzalloc(IOVM_BITMAP_SIZE(vmm->iovm_size[i]),
 					 GFP_KERNEL);
@@ -671,7 +689,7 @@ int exynos_create_iovmm(struct device *dev, int inplanes, int onplanes)
 			ret = -ENOMEM;
 			goto err_setup_domain;
 		}
-		sum_iovm += iovmcfg[nplanes - 1][i];
+		sum_iovm += iovmcfg[cfgsel][i];
 		dev_info(dev, "IOVMM: IOVM SIZE = %#x B, IOVMM from %#x.\n",
 				vmm->iovm_size[i], vmm->iova_start[i]);
 	}

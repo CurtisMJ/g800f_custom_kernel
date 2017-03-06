@@ -36,8 +36,8 @@
 #include <linux/sensor/sensors_core.h>
 #include "mpu6500_selftest.h"
 
-#define MPU6500_ACCEL_CAL_PATH	"/efs/calibration_data"
-#define MPU6500_GYRO_CAL_PATH	"/efs/gyro_cal_data"
+#define MPU6500_ACCEL_CAL_PATH	"/efs/FactoryApp/accel_calibration_data"
+#define MPU6500_GYRO_CAL_PATH	"/efs/FactoryApp/gyro_cal_data"
 #define MODEL_NAME	"MPU6515"
 #define VENDOR_NAME	"INVENSENSE"
 #endif
@@ -310,10 +310,10 @@ static int gyro_do_calibrate(struct inv_mpu_state *st)
 	int err;
 	mm_segment_t old_fs;
 
-	/* selftest was doing 2000dps condition, change to 500dps */
-	st->gyro_bias[0] = st->gyro_bias[0] << 2;
-	st->gyro_bias[1] = st->gyro_bias[1] << 2;
-	st->gyro_bias[2] = st->gyro_bias[2] << 2;
+	/* selftest change to 2000dps */
+	st->gyro_bias[0] = st->gyro_bias[0];
+	st->gyro_bias[1] = st->gyro_bias[1];
+	st->gyro_bias[2] = st->gyro_bias[2];
 
 	pr_info("[SENSOR] %s: - cal data (%d,%d,%d)\n", __func__,
 		st->gyro_bias[0], st->gyro_bias[1], st->gyro_bias[2]);
@@ -387,7 +387,7 @@ static int inv_switch_engine(struct inv_mpu_state *st, bool en, u32 mask)
 
 	if ((BIT_PWR_GYRO_STBY == mask) && en) {
 		/* only gyro on needs sensor up time */
-		usleep_range(SENSOR_UP_TIME, SENSOR_UP_TIME + 1000);
+		msleep(SENSOR_UP_TIME);
 		/* after gyro is on & stable, switch internal clock to PLL */
 		mgmt_1 |= INV_CLK_PLL;
 		result = inv_i2c_single_write(st, reg->pwr_mgmt_1,
@@ -478,11 +478,11 @@ static int inv_init_config(struct iio_dev *indio_dev)
 	reg = &st->reg;
 
 	result = inv_i2c_single_write(st, reg->gyro_config,
-				INV_FSR_500DPS << GYRO_CONFIG_FSR_SHIFT);
+				INV_FSR_2000DPS << GYRO_CONFIG_FSR_SHIFT);
 	if (result)
 		return result;
 
-	st->chip_config.fsr = INV_FSR_500DPS;
+	st->chip_config.fsr = INV_FSR_2000DPS;
 
 	result = inv_i2c_single_write(st, reg->lpf, INV_FILTER_42HZ);
 	if (result)
@@ -3692,7 +3692,7 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 	result = inv_i2c_single_write(st, reg->pwr_mgmt_1, BIT_H_RESET);
 	if (result)
 		return result;
-	usleep_range(POWER_UP_TIME, POWER_UP_TIME + 1000);
+	msleep(POWER_UP_TIME);
 	/* toggle power state */
 	result = st->set_power_state(st, false);
 	if (result)
@@ -3704,7 +3704,7 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 
 	if (!strcmp(id->name, "mpu6xxx")) {
 		/* for MPU6500, reading register need more time */
-		usleep_range(POWER_UP_TIME, POWER_UP_TIME + 1000);
+		msleep(POWER_UP_TIME);
 		result = inv_detect_6xxx(st);
 		if (result)
 			return result;
@@ -4073,7 +4073,7 @@ static void inv_mpu_shutdown(struct i2c_client *client)
 	if (result)
 		dev_err(&client->adapter->dev, "Failed to reset %s\n",
 			st->hw->name);
-	usleep_range(POWER_UP_TIME, POWER_UP_TIME + 1000);
+	msleep(POWER_UP_TIME);
 
 	/* turn off power to ensure gyro engine is off */
 	result = st->set_power_state(st, false);

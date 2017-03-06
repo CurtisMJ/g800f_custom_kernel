@@ -190,7 +190,6 @@ obj-$(CONFIG_MACH_KMINI)		+= board-kmini-camera.o
 obj-$(CONFIG_MACH_KMINI)		+= board-kmini-sensor.o
 obj-$(CONFIG_MACH_KMINI)		+= board-kmini-thermistor.o
 obj-$(CONFIG_MACH_KMINI)        	+= board-kmini-led.o
-obj-$(CONFIG_MACH_KMINI)		+= sec-reboot.o
 obj-$(CONFIG_MACH_KMINI)		+= board-kmini-wlan.o
 
 obj-$(CONFIG_MACH_GARDA)                += mach-universal222ap.o
@@ -397,16 +396,6 @@ obj-$(CONFIG_BL_SWITCHER)		+= bL_control.o bL_setup.o
 obj-$(CONFIG_GPS_BCM47531)		+= sec_gps_bcm47531.o
 obj-$(CONFIG_GPS_BCM47521)		+= sec_gps_bcm47521.o
 obj-$(CONFIG_GPS_BCM4752)		+= sec_gps_bcm4752.o
-
-# Samsung sec sysfs Feature
-obj-$(CONFIG_SEC_SYSFS)			+= sec_sysfs.o
-
-# Samsung Reset Feature
-obj-$(CONFIG_MACH_UNIVERSAL5260)	+= sec_reboot.o
-
-# Samsung Debug Feature
-obj-$(CONFIG_SEC_DEBUG)			+= sec_debug.o sec_getlog.o sec_gaf.o
-obj-$(CONFIG_SEC_LOG)			+= sec_log.o
 
 obj-$(CONFIG_SEC_MODEM_XMM6360)		+= board-xmm6360-modems.o
 obj-$(CONFIG_SEC_MODEM_XMM6262)		+= board-xmm626x-modems.o

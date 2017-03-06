@@ -219,6 +219,28 @@ static int32_t rt5033_fg_i2c_write_word(struct i2c_client *client,
 	return ret;
 }
 
+static int sec_bat_check_discharge(int vcell)
+{
+	static int cnt;
+	static int pre_vcell = 0;
+
+	if (pre_vcell == 0)
+		pre_vcell = vcell;
+	else if (pre_vcell > vcell)
+		cnt++;
+	else if (vcell >= 3400)
+		cnt = 0;
+	else
+		cnt--;
+
+	pre_vcell = vcell;
+
+	if (cnt >= 3)
+		return -1;
+	else
+		return 1;
+}
+
 static unsigned int fg_get_vbat(struct i2c_client *client);
 static unsigned int fg_get_avg_volt(struct i2c_client *client);
 static unsigned int fg_get_ocv(struct i2c_client *client);
@@ -462,6 +484,38 @@ static vg_comp_data_t rt5033_fg_get_vgcomp(
 	dev_dbg(&fuelgauge->client->dev, "%d %d %d %d\n", retval.data[0],
 			retval.data[1], retval.data[2], retval.data[3]);
 	return retval;
+}
+
+/* judge power off or not by current_avg */
+static int rt5033_fg_get_current_average(struct i2c_client *client)
+{
+    struct sec_fuelgauge_info *fuelgauge = i2c_get_clientdata(client);
+    union power_supply_propval value_bat;
+    union power_supply_propval value_chg;
+    int vcell, soc, curr_avg;
+    int check_discharge;
+
+    psy_do_property("sec-charger", get,
+                    POWER_SUPPLY_PROP_CURRENT_NOW, value_chg);
+    psy_do_property("battery", get,
+                    POWER_SUPPLY_PROP_HEALTH, value_bat);
+    vcell = fg_get_vbat(client);
+    soc = fg_get_soc(client) / 10;
+    check_discharge = sec_bat_check_discharge(vcell);
+
+    /* if 0% && under 3.4v && low power charging(1000mA), power off */
+    if (!fuelgauge->pdata->is_lpm() && (soc <= 0) && (vcell < 3400) &&
+                    ((check_discharge < 0) ||
+                     ((value_bat.intval == POWER_SUPPLY_HEALTH_OVERHEAT) ||
+                      (value_bat.intval == POWER_SUPPLY_HEALTH_COLD)))) {
+            pr_info("%s: SOC(%d), Vnow(%d), Inow(%d)\n",
+                            __func__, soc, vcell, value_chg.intval);
+            curr_avg = -1;
+    } else {
+            curr_avg = value_chg.intval;
+    }
+
+    return curr_avg;
 }
 
 #define OFFSET_INTERPOLATION_ORDER_X 2
@@ -1407,8 +1461,11 @@ bool sec_hal_fg_get_property(struct i2c_client *client,
 			break;
 			/* Current (mA) */
 		case POWER_SUPPLY_PROP_CURRENT_NOW:
-			/* Average Current (mA) */
+			val->intval = 0;
+			break;
+            /* Average Current (mA) */
 		case POWER_SUPPLY_PROP_CURRENT_AVG:
+			val->intval = rt5033_fg_get_current_average(client);
 			break;
 		case POWER_SUPPLY_PROP_CHARGE_FULL:
 			val->intval =

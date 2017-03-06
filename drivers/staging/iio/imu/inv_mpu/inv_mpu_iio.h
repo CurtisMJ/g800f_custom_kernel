@@ -199,10 +199,10 @@
 #define FIFO_SIZE                400
 #define HARDWARE_FIFO_SIZE       512
 #define MAX_READ_SIZE            64
-#define POWER_UP_TIME            100000
-#define SENSOR_UP_TIME           30000
+#define POWER_UP_TIME            100
+#define SENSOR_UP_TIME           30
 #define REG_UP_TIME              10000
-#define INV_MPU_SAMPLE_RATE_CHANGE_STABLE 50000
+#define INV_MPU_SAMPLE_RATE_CHANGE_STABLE 50
 #define MPU_MEM_BANK_SIZE        256
 #define SELF_TEST_GYRO_FULL_SCALE 250
 #define SELF_TEST_ACCEL_FULL_SCALE 8

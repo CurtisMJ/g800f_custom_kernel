@@ -390,6 +390,7 @@ ecryptfs_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return 0;
 	}
 #endif
+
 	if (ecryptfs_file_to_private(file))
 		lower_file = ecryptfs_file_to_lower(file);
 	if (!(lower_file && lower_file->f_op && lower_file->f_op->unlocked_ioctl))
@@ -416,6 +417,44 @@ ecryptfs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct file *lower_file = NULL;
 	long rc = -ENOIOCTLCMD;
+#ifdef CONFIG_WTL_ENCRYPTION_FILTER
+	if (cmd == ECRYPTFS_IOCTL_GET_ATTRIBUTES) {
+		u32 __user *user_attr = (u32 __user *)arg;
+		u32 attr = 0;
+		char filename[NAME_MAX+1] = {0};
+		struct dentry *ecryptfs_dentry = file->f_path.dentry;
+		struct ecryptfs_mount_crypt_stat *mount_crypt_stat =
+			&ecryptfs_superblock_to_private(ecryptfs_dentry->d_sb)
+				->mount_crypt_stat;
+
+		struct inode *inode = ecryptfs_dentry->d_inode;
+		struct ecryptfs_crypt_stat *crypt_stat =
+			&ecryptfs_inode_to_private(inode)->crypt_stat;
+		struct dentry *fp_dentry =
+			ecryptfs_inode_to_private(inode)->lower_file->f_dentry;
+		if (fp_dentry->d_name.len <= NAME_MAX)
+			memcpy(filename, fp_dentry->d_name.name,
+					fp_dentry->d_name.len + 1);
+
+		mutex_lock(&crypt_stat->cs_mutex);
+		if ((crypt_stat->flags & ECRYPTFS_ENCRYPTED
+			|| crypt_stat->flags & ECRYPTFS_ENCRYPTED_OTHER_DEVICE)
+			|| ((mount_crypt_stat->flags
+					& ECRYPTFS_ENABLE_FILTERING)
+				&& (is_file_name_match
+					(mount_crypt_stat, fp_dentry)
+				|| is_file_ext_match
+					(mount_crypt_stat, filename)))) {
+			if (crypt_stat->flags & ECRYPTFS_KEY_VALID)
+				attr = ECRYPTFS_WAS_ENCRYPTED;
+			else
+				attr = ECRYPTFS_WAS_ENCRYPTED_OTHER_DEVICE;
+		}
+		mutex_unlock(&crypt_stat->cs_mutex);
+		put_user(attr, user_attr);
+		return 0;
+	}
+#endif
 
 	if (ecryptfs_file_to_private(file))
 		lower_file = ecryptfs_file_to_lower(file);
@@ -450,7 +489,7 @@ int is_file_name_match(struct ecryptfs_mount_crypt_stat *mcs,
 	str = kzalloc(mcs->max_name_filter_len + 1, GFP_KERNEL);
 	if (!str) {
 		printk(KERN_ERR "%s: Out of memory whilst attempting "
-			       "to kzalloc [%zd] bytes\n", __func__,
+			       "to kzalloc [%d] bytes\n", __func__,
 			       (mcs->max_name_filter_len + 1));
 		return 0;
 	}
@@ -458,8 +497,7 @@ int is_file_name_match(struct ecryptfs_mount_crypt_stat *mcs,
 	for (i = 0; i < ENC_NAME_FILTER_MAX_INSTANCE; i++) {
 		int len = 0;
 		struct dentry *p = fp_dentry;
-		if (!mcs->enc_filter_name[i] ||
-			 !strlen(mcs->enc_filter_name[i]))
+		if (!strlen(mcs->enc_filter_name[i]))
 			break;
 
 		while (1) {
@@ -509,7 +547,7 @@ int is_file_ext_match(struct ecryptfs_mount_crypt_stat *mcs, char *str)
 		return 0;
 
 	for (i = 0; i < ENC_EXT_FILTER_MAX_INSTANCE; i++) {
-		if (!mcs->enc_filter_ext[i] || !strlen(mcs->enc_filter_ext[i]))
+		if (!strlen(mcs->enc_filter_ext[i]))
 			return 0;
 		if (strlen(ext) != strlen(mcs->enc_filter_ext[i]))
 			continue;

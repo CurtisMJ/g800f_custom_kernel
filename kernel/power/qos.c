@@ -718,7 +718,7 @@ static void pm_qos_debug_show_one(struct seq_file *s, struct pm_qos_object *qos)
 	seq_printf(s, "   target value: %d\n", qos->constraints->target_value);
 	seq_printf(s, "   requests:\n");
 	plist_for_each(p, &qos->constraints->list)
-		seq_printf(s, "      %pk: %d\n",
+		seq_printf(s, "      %pK: %d\n",
 				container_of(p, struct pm_qos_request, node),
 				p->prio);
 

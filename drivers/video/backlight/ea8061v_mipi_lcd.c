@@ -740,7 +740,7 @@ static int init_hbm_parameter(struct lcd_info *lcd, const u8 *mtp_data, const u8
 	return 0;
 
 }
-int auto_br_count_first = 0;
+
 static int update_brightness(struct lcd_info *lcd, u8 force)
 {
 	u32 brightness;
@@ -748,16 +748,10 @@ static int update_brightness(struct lcd_info *lcd, u8 force)
 	mutex_lock(&lcd->bl_lock);
 
 	brightness = lcd->bd->props.brightness;
-	
-	/* Apply HBM after Max brightness*/
-	if(brightness == lcd->bd->props.max_brightness) 
-		auto_br_count_first ++;
-	else
-		auto_br_count_first = 0;
 
 	lcd->bl = get_backlight_level_from_brightness(brightness);
 
-	if (LEVEL_IS_HBM(lcd->auto_brightness) && (brightness == lcd->bd->props.max_brightness) && (auto_br_count_first !=1))
+	if (LEVEL_IS_HBM(lcd->auto_brightness) && (brightness == lcd->bd->props.max_brightness))
 		lcd->bl = GAMMA_HBM;
 
 	if ((force) || ((lcd->ldi_enable) && (lcd->current_bl != lcd->bl))) {
@@ -800,6 +794,9 @@ static int ea8061v_ldi_init(struct lcd_info *lcd)
 	ea8061v_write(lcd, SEQ_ERR_FG_OUTPUT_SET2, ARRAY_SIZE(SEQ_ERR_FG_OUTPUT_SET2));
 	ea8061v_write(lcd, SEQ_DSI_ERR_OUT, ARRAY_SIZE(SEQ_DSI_ERR_OUT));
 	ea8061v_write(lcd, SEQ_APPLY_LEVEL_3_KEY_LOCK, ARRAY_SIZE(SEQ_APPLY_LEVEL_3_KEY_LOCK));
+
+	update_brightness(lcd, 1);
+
 	ea8061v_write(lcd, SEQ_SLEEP_OUT, ARRAY_SIZE(SEQ_SLEEP_OUT));
 	mdelay(120);
 

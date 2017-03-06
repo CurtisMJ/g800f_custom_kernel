@@ -851,7 +851,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 			PREPARE_DELAYED_WORK(&hub->init_work, hub_init_func2);
 			schedule_delayed_work(&hub->init_work,
 					msecs_to_jiffies(delay));
-
+			
 			/* Suppress autosuspend until init is done */
 			usb_autopm_get_interface_no_resume(
 					to_usb_interface(hub->intfdev));

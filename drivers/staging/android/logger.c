@@ -32,6 +32,10 @@
 #include <mach/sec_debug.h>
 #endif
 
+#ifdef CONFIG_SEC_BSP
+#include <linux/sec_bsp.h>
+#endif
+
 /*
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
  *
@@ -453,6 +457,11 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 #endif
 		}
 	}
+#ifdef CONFIG_SEC_BSP
+	if (strncmp(log->buffer + log->w_off, "!@Boot", 6) == 0) {
+		sec_boot_stat_add(log->buffer + log->w_off);
+	}
+#endif
 	log->w_off = logger_offset(log, log->w_off + count);
 
 	return count;

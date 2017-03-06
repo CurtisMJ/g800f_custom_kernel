@@ -2200,7 +2200,7 @@ EXPORT_SYMBOL(mmc_detect_card_removed);
 
 void mmc_rescan(struct work_struct *work)
 {
-	static const unsigned freqs[] = { 400000 };
+	static const unsigned freqs[] = { 400000, 300000 };
 	struct mmc_host *host =
 		container_of(work, struct mmc_host, detect.work);
 	int i;

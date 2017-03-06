@@ -96,7 +96,10 @@ static enum power_supply_property sec_charger_props[] = {
         POWER_SUPPLY_PROP_CURRENT_MAX,
         POWER_SUPPLY_PROP_CURRENT_AVG,
         POWER_SUPPLY_PROP_CURRENT_NOW,
-	POWER_SUPPLY_PROP_CHARGE_OTG_CONTROL,
+		POWER_SUPPLY_PROP_CHARGE_OTG_CONTROL,
+#if defined(CONFIG_BATTERY_SWELLING)
+		POWER_SUPPLY_PROP_VOLTAGE_MAX,
+#endif
 };
 
 static int rt5033_get_charging_health(struct rt5033_charger_data *charger);
@@ -167,46 +170,56 @@ static void rt5033_charger_otg_control(struct rt5033_charger_data *charger,
 
 /* this function will work well on CHIP_REV = 3 or later */
 static void rt5033_enable_charger_switch(struct rt5033_charger_data *charger,
-                int onoff)
+		int onoff)
 {
-        struct i2c_client *iic = charger->rt5033->i2c_client;
+	int prev_charging_status;
+	struct i2c_client *iic = charger->rt5033->i2c_client;
 	union power_supply_propval val;
 
-        charger->is_charging = onoff ? true : false;
-        if (onoff) {
+	mutex_lock(&charger->io_lock);
+	prev_charging_status = charger->is_charging;
+	charger->is_charging = onoff ? true : false;
+	if ((onoff > 0) && (prev_charging_status == false)) {
+		charger->full_charged = false;
 		pr_info("%s: turn on charger\n", __func__);
 #ifdef CONFIG_FLED_RT5033
-                if (charger->fled_info == NULL)
-                        charger->fled_info = rt_fled_get_info_by_name(NULL);
-                if (charger->fled_info)
-                        rt5033_charger_notification(charger->fled_info, 1);
+		if (charger->fled_info == NULL)
+			charger->fled_info = rt_fled_get_info_by_name(NULL);
+		if (charger->fled_info)
+			rt5033_charger_notification(charger->fled_info, 1);
 #endif /* CONFIG_FLED_RT5033 */
-                rt5033_clr_bits(iic, RT5033_CHG_STAT_CTRL, RT5033_CHGENB_MASK);
-                rt5033_clr_bits(iic, RT5033_CHG_CTRL1, RT5033_HZ_MASK);
-                rt5033_set_bits(iic, RT5033_CHG_CTRL3, RT5033_COF_EN_MASK);
-                /* Reset EOC loop, and make it re-detect */
-                charger->eoc_cnt = 0;
+		rt5033_clr_bits(iic, RT5033_CHG_STAT_CTRL, RT5033_CHGENB_MASK);
+		rt5033_clr_bits(iic, RT5033_CHG_CTRL1, RT5033_HZ_MASK);
+		rt5033_set_bits(iic, RT5033_CHG_CTRL3, RT5033_COF_EN_MASK);
+		/* Reset EOC loop, and make it re-detect */
+		charger->eoc_cnt = 0;
 
-                rt5033_set_bits(iic, RT5033_EOC_CTRL, RT5033_EOC_RESET_MASK);
-                rt5033_clr_bits(iic, RT5033_EOC_CTRL, RT5033_EOC_RESET_MASK);
+		rt5033_set_bits(iic, RT5033_EOC_CTRL, RT5033_EOC_RESET_MASK);
+		rt5033_clr_bits(iic, RT5033_EOC_CTRL, RT5033_EOC_RESET_MASK);
 		/* Set Reg0x07[5] = 0 -> enable bad adaptor detection */
 		rt5033_clr_bits(iic, RT5033_EOC_CTRL, (1 << 5));
-	} else {
+	} else if (onoff == 0) {
 		psy_do_property("battery", get,
 				POWER_SUPPLY_PROP_STATUS, val);
 		if (val.intval != POWER_SUPPLY_STATUS_FULL)
 			charger->full_charged = false;
-                pr_info("%s: turn off charger\n", __func__);
-                charger->charging_current = 0;
-                charger->eoc_cnt = 0;
+		pr_info("%s: turn off charger\n", __func__);
+		charger->charging_current = 0;
+		charger->eoc_cnt = 0;
+		/* Disable EOC */
+		rt5033_clr_bits(iic, RT5033_CHG_CTRL4, RT5033_IEOC_MASK);
 #ifdef CONFIG_FLED_RT5033
-                if (charger->fled_info == NULL)
-                        charger->fled_info = rt_fled_get_info_by_name(NULL);
-                if (charger->fled_info)
-                        rt5033_charger_notification(charger->fled_info, 0);
+		if (charger->fled_info == NULL)
+			charger->fled_info = rt_fled_get_info_by_name(NULL);
+		if (charger->fled_info)
+			rt5033_charger_notification(charger->fled_info, 0);
 #endif /* CONFIG_FLED_RT5033 */
-                rt5033_set_bits(iic, RT5033_CHG_STAT_CTRL, RT5033_CHGENB_MASK);
-        }
+		rt5033_set_bits(iic, RT5033_CHG_STAT_CTRL, RT5033_CHGENB_MASK);
+	} else {
+	    pr_info("%s: repeated to set charger switch(%d), prev stat = %d\n",
+             __func__, onoff, prev_charging_status ? 1 : 0);
+	}
+	mutex_unlock(&charger->io_lock);
 }
 
 static void rt5033_enable_charging_termination(struct i2c_client *i2c,
@@ -289,6 +302,22 @@ static void rt5033_set_regulation_voltage(struct rt5033_charger_data *charger,
                         data << RT5033_VOREG_SHIFT);
         mutex_unlock(&charger->io_lock);
 }
+
+#if defined(CONFIG_BATTERY_SWELLING)
+static int rt5033_get_regulation_voltage(struct rt5033_charger_data *charger)
+{
+	int data;
+	data = rt5033_reg_read(charger->rt5033->i2c_client, RT5033_CHG_CTRL2);
+	if (data < 0) {
+		pr_info("%s: warning --> fail to read i2c register(%d)\n", __func__, data);
+		return data;
+	}
+	data &= RT5033_VOREG_MASK;
+	pr_info("%s: battery cv voltage 0x%x\n", __func__, data);
+
+	return data;
+}
+#endif
 
 static void __rt5033_set_fast_charging_current(struct i2c_client *i2c,
                 int charging_current)
@@ -701,6 +730,11 @@ static int sec_chg_get_property(struct power_supply *psy,
         case POWER_SUPPLY_PROP_CHARGE_TYPE:
                 val->intval = rt5033_get_charge_type(charger->rt5033->i2c_client);
                 break;
+#if defined(CONFIG_BATTERY_SWELLING)
+		case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+				val->intval = rt5033_get_regulation_voltage(charger);
+				break;
+#endif
         default:
                 return -EINVAL;
         }
@@ -764,9 +798,25 @@ static int sec_chg_set_property(struct power_supply *psy,
 			val->intval, eoc);
                         rt5033_set_charging_current(charger, 0);
                 break;
-	case POWER_SUPPLY_PROP_CHARGE_OTG_CONTROL:
+		case POWER_SUPPLY_PROP_CHARGE_OTG_CONTROL:
 			rt5033_charger_otg_control(charger, val->intval);
 		break;
+#if defined(CONFIG_BATTERY_SWELLING)
+		case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+			pr_info("%s: float voltage(%d)\n", __func__, val->intval);
+			rt5033_set_regulation_voltage(charger, val->intval);
+			break;
+		case POWER_SUPPLY_PROP_CURRENT_AVG:
+			if (val->intval > charger->pdata->charging_current_table
+				[charger->cable_type].fast_charging_current) {
+				break;
+			}
+			eoc = rt5033_get_current_eoc_setting(charger);
+			pr_info("%s:Set chg current = %d mA, topoff = %d mA\n", __func__,
+				val->intval, eoc);
+			rt5033_set_charging_current(charger, 0);
+			break;
+#endif
         default:
                 return -EINVAL;
         }

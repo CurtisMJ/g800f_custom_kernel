@@ -2397,6 +2397,12 @@ static int s3c_fb_get_user_ion_handle(struct s3c_fb *sfb,
 }
 #endif
 
+static ssize_t s3c_fb_write(struct fb_info *info, char const __user *buf,
+		size_t count, loff_t *ppos)
+{
+	return 0;
+}
+
 static int s3c_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)
 {
@@ -2567,6 +2573,7 @@ static struct fb_ops s3c_fb_ops = {
 	.fb_fillrect	= cfb_fillrect,
 	.fb_copyarea	= cfb_copyarea,
 	.fb_imageblit	= cfb_imageblit,
+	.fb_write	= s3c_fb_write,
 	.fb_pan_display	= s3c_fb_pan_display,
 	.fb_ioctl	= s3c_fb_ioctl,
 	.fb_mmap	= s3c_fb_mmap,

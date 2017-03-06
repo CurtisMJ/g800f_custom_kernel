@@ -4769,7 +4769,7 @@ static int cyttsp5_core_poweron_device_(struct cyttsp5_core_data *cd)
 	}
 	cd->hw_power_state = true;
 	if (!cd->irq_enabled) {
-		irq_enable(cd->irq);
+		enable_irq(cd->irq);
 		cd->irq_enabled = true;
 	}
 	cyttsp5_queue_startup(cd);

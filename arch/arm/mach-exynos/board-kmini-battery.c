@@ -600,7 +600,11 @@ sec_battery_platform_data_t sec_battery_pdata = {
 		SEC_BATTERY_CABLE_CHECK_INT,
 	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_EXTERNAL,
 
+#if defined(CONFIG_MACH_KMINI)
+	.event_check = false,
+#else
 	.event_check = true,
+#endif
 	.event_waiting_time = 600,
 
 	/* Monitor setting */
@@ -629,21 +633,32 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	.temp_highlimit_recovery_normal = 750,
 	.temp_highlimit_threshold_lpm = 800,
 	.temp_highlimit_recovery_lpm = 750,
-	.temp_high_threshold_event = 600,
-	.temp_high_recovery_event = 460,
+	.temp_high_threshold_event = 580,
+	.temp_high_recovery_event = 530,
 	.temp_low_threshold_event = -50,
 	.temp_low_recovery_event = 0,
-	.temp_high_threshold_normal = 600,
-	.temp_high_recovery_normal = 460,
+	.temp_high_threshold_normal = 580,
+	.temp_high_recovery_normal = 530,
 	.temp_low_threshold_normal = -50,
 	.temp_low_recovery_normal = 0,
-	.temp_high_threshold_lpm = 600,
-	.temp_high_recovery_lpm = 460,
+	.temp_high_threshold_lpm = 580,
+	.temp_high_recovery_lpm = 530,
 	.temp_low_threshold_lpm = -50,
 	.temp_low_recovery_lpm = 0,
 
+	.swelling_high_temp_block = 500,
+	.swelling_high_temp_recov = 450,
+	.swelling_low_temp_block = 50,
+	.swelling_low_temp_recov = 100,
+	.swelling_drop_float_voltage = 4200,
+	.swelling_normal_float_voltage = 4390,
+	.swelling_low_temp_current = 1000, /* 0.5C */
+	.swelling_high_temp_current = 1400, /* 0.7C */
+	.swelling_high_rechg_voltage = 4150,
+	.swelling_low_rechg_voltage = 4050,
+
 	.full_check_type = SEC_BATTERY_FULLCHARGED_CHGPSY,
-	.full_check_type_2nd = SEC_BATTERY_FULLCHARGED_TIME,
+	.full_check_type_2nd = SEC_BATTERY_FULLCHARGED_NONE,
 	.full_check_count = 1,
 	/* .full_check_adc_1st = 26500, */
 	/*.full_check_adc_2nd = 25800, */
@@ -654,14 +669,14 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	        SEC_BATTERY_FULL_CONDITION_NOTIMEFULL,
 	.full_condition_soc = 97,
 	.full_condition_ocv = 4350,
-	.full_condition_vcell = 4350,
+	.full_condition_vcell = 4300,
 
 	.recharge_condition_type =
 		SEC_BATTERY_RECHARGE_CONDITION_VCELL,
 	.recharge_check_count = 1,
 	.recharge_condition_soc = 98,
 	.recharge_condition_avgvcell = 4350,
-	.recharge_condition_vcell = 4350,
+	.recharge_condition_vcell = 4330,
 
 	.charging_total_time = 6 * 60 * 60,
 	.recharging_total_time = 90 * 60,
@@ -673,7 +688,9 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	.fuel_alert_soc = 1,
 	.repeated_fuelalert = false,
 	.capacity_calculation_type =
-		SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE,
+		SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE |
+		SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC |
+		SEC_FUELGAUGE_CAPACITY_TYPE_SKIP_ABNORMAL,
 	.capacity_max = 1000,
 	.capacity_min = 0,
 	.capacity_max_margin = 30,
@@ -682,7 +699,7 @@ sec_battery_platform_data_t sec_battery_pdata = {
 	.chg_polarity_en = 0,   /* active LOW charge enable */
 	.chg_polarity_status = 0,
 	.chg_irq_attr = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-	.chg_float_voltage = 4400,
+	.chg_float_voltage = 4390,
 };
 
 static struct i2c_gpio_platform_data tab3_gpio_i2c14_pdata = {

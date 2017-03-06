@@ -278,6 +278,7 @@ static ssize_t flash_store(struct device *dev, struct device_attribute *attr,
 }
 
 static DEVICE_ATTR(rear_flash, S_IWUSR|S_IWGRP, NULL, flash_store);
+static DEVICE_ATTR(rear_torch_flash, S_IWUSR|S_IWGRP, NULL, flash_store);
 
 int create_flash_sysfs(rt5033_fled_info_t *fled_info)
 {
@@ -300,6 +301,11 @@ int create_flash_sysfs(rt5033_fled_info_t *fled_info)
 	if (unlikely(err < 0)) {
 		pr_err("flash_sysfs: failed to create device file, %s\n",
 			dev_attr_rear_flash.attr.name);
+	}
+	err = device_create_file(flash_dev, &dev_attr_rear_torch_flash);
+	if (unlikely(err < 0)) {
+		pr_err("flash_sysfs: failed to create device file, %s\n",
+			dev_attr_rear_torch_flash.attr.name);
 	}
 
 #ifdef CONFIG_FLED_RT5033_EXT_GPIO
@@ -1158,12 +1164,20 @@ err_parse_dt_nomem:
 static int rt5033_fled_remove(struct platform_device *pdev)
 {
 	struct rt5033_fled_info *fled_info;
+
 	RT5033_FLED_INFO("Richtek RT5033 FlashLED driver removing...\n");
+
 	fled_info = platform_get_drvdata(pdev);
 	unregister_irq(pdev, fled_info);
 	platform_device_unregister(&rt_fled_pdev);
 	mutex_destroy(&fled_info->led_lock);
 	kfree(fled_info);
+
+	device_remove_file(flash_dev, &dev_attr_rear_flash);
+	device_remove_file(flash_dev, &dev_attr_rear_torch_flash);
+	device_destroy(camera_class, 0);
+	class_destroy(camera_class);
+
 	return 0;
 }
 

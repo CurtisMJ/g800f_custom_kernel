@@ -141,7 +141,9 @@ enum dhd_prealloc_index {
 	DHD_PREALLOC_WIPHY_ESCAN1,
 #endif /* CUSTOMER_HW4 && DUAL_ESCAN_RESULT_BUFFER */
 #endif /* STATIC_WL_PRIV_STRUCT */
-	DHD_PREALLOC_DHD_INFO = 7
+	DHD_PREALLOC_DHD_INFO = 7,
+ 	DHD_PREALLOC_DHD_WLFC_INFO = 8,
+ 	DHD_PREALLOC_DHD_WLFC_HANGER = 9
 };
 
 /* Packet alignment for most efficient SDIO (can change based on platform) */

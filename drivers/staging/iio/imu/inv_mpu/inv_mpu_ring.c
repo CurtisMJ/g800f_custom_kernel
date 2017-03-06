@@ -50,7 +50,10 @@ static void get_sample_count_per_sensor(struct inv_mpu_state *st, u8 *dptr, u8 *
 
 	st->sensor[SENSOR_GYRO].sample_count = st->sensor[SENSOR_GYRO].batch_irq_time = 0;
 	st->sensor[SENSOR_ACCEL].sample_count = st->sensor[SENSOR_ACCEL].batch_irq_time = 0;
+	st->sensor[SENSOR_COMPASS].sample_count = st->sensor[SENSOR_COMPASS].batch_irq_time = 0;
 	st->sensor[SENSOR_PRESSURE].sample_count = st->sensor[SENSOR_PRESSURE].batch_irq_time = 0;
+	st->sensor[SENSOR_STEP].sample_count = st->sensor[SENSOR_STEP].batch_irq_time = 0;
+	st->sensor[SENSOR_PEDQ].sample_count = st->sensor[SENSOR_PEDQ].batch_irq_time = 0;
 	st->sensor[SENSOR_SIXQ].sample_count = st->sensor[SENSOR_SIXQ].batch_irq_time = 0;
 	st->sensor[SENSOR_LPQ].sample_count = st->sensor[SENSOR_LPQ].batch_irq_time = 0;
 
@@ -65,39 +68,25 @@ static void get_sample_count_per_sensor(struct inv_mpu_state *st, u8 *dptr, u8 *
 			pr_err("sensor_ind == SENSOR_INVALID\n");
 			continue;
 		}
-
-		switch (sensor_ind)
+		else 
 		{
-			case SENSOR_GYRO:
-				st->sensor[SENSOR_GYRO].sample_count++;
-				break;
-			case SENSOR_ACCEL:
-				st->sensor[SENSOR_ACCEL].sample_count++;
-				break;
-			case SENSOR_PRESSURE:
-				st->sensor[SENSOR_PRESSURE].sample_count++;
-				break;
-			case SENSOR_SIXQ:
-				st->sensor[SENSOR_SIXQ].sample_count++;
-				break;
-			case SENSOR_LPQ:
-				st->sensor[SENSOR_LPQ].sample_count++;
-				break;
-			case SENSOR_STEP:
-				st->sensor[SENSOR_STEP].sample_count++;
-				break;
-			default:
+			if(sensor_ind >= SENSOR_NUM_MAX)
+			{
 				pr_err("sensor_ind not found\n");
+			}
+			else 
+			{
+				st->sensor[sensor_ind].sample_count++;
+				dptr += st->sensor[sensor_ind].sample_size;
+			}
 		}
-
-		dptr += st->sensor[sensor_ind].sample_size;
 	}
 }
 
 static u64 check_timestamp(struct inv_mpu_state *st, u16 hdr, u8 *buf_data1, u8 *buf_data2, u64 t)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
-	u8 buf_ts[IIO_BUFFER_BYTES];
+	u8 buf_ts[IIO_BUFFER_BYTES] = {0,};
 	int ind = inv_parse_header(hdr);
 	u64 t_new = 0;
 	u64 t_old = st->sensor[ind].old_ts;
@@ -137,7 +126,7 @@ static u64 check_timestamp(struct inv_mpu_state *st, u16 hdr, u8 *buf_data1, u8 
 static int inv_push_marker_to_buffer(struct inv_mpu_state *st, u16 hdr)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
-	u8 buf[IIO_BUFFER_BYTES];
+	u8 buf[IIO_BUFFER_BYTES] = {0,};
 
 	memcpy(buf, &hdr, sizeof(hdr));
 	iio_push_to_buffer(indio_dev->buffer, buf, 0);
@@ -149,8 +138,8 @@ static int inv_push_8bytes_buffer(struct inv_mpu_state *st, u16 hdr,
 							u64 t, s16 *d)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
-	u8 buf_data1[IIO_BUFFER_BYTES];
-	u8 buf_ts[IIO_BUFFER_BYTES];
+	u8 buf_data1[IIO_BUFFER_BYTES] = {0,};
+	u8 buf_ts[IIO_BUFFER_BYTES] = {0,};
 	int i;
 	int ind = inv_parse_header(hdr);
 
@@ -184,9 +173,9 @@ static int inv_push_16bytes_buffer(struct inv_mpu_state *st, u16 hdr, u64 t,
 									int *q)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
-	u8 buf_data1[IIO_BUFFER_BYTES];
-	u8 buf_data2[IIO_BUFFER_BYTES];
-	u8 buf_ts[IIO_BUFFER_BYTES];
+	u8 buf_data1[IIO_BUFFER_BYTES] = {0,};
+	u8 buf_data2[IIO_BUFFER_BYTES] = {0,};
+	u8 buf_ts[IIO_BUFFER_BYTES] = {0,};
 	int i;
 	int ind = inv_parse_header(hdr);
 
@@ -505,7 +494,7 @@ static int inv_saturate_secondary_counter(struct inv_mpu_state *st)
 	int result;
 	struct inv_reg_map_s *reg;
 
-#define COUNT_SATURATE_TIME_MS 32000
+#define COUNT_SATURATE_TIME_MS 32
 	reg = &st->reg;
 	/* set sampling to 1KHz */
 	result = inv_i2c_single_write(st, reg->sample_rate_div, 0);
@@ -521,7 +510,7 @@ static int inv_saturate_secondary_counter(struct inv_mpu_state *st)
 	result = inv_i2c_single_write(st, reg->user_ctrl, BIT_I2C_MST_EN);
 	if (result)
 		return result;
-	usleep_range(COUNT_SATURATE_TIME_MS, COUNT_SATURATE_TIME_MS + 1000);
+	msleep(COUNT_SATURATE_TIME_MS);
 
 	return 0;
 }
@@ -1212,7 +1201,7 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 		if (d & BIT_SLEEP) {
 			/* Power up the chip and clear the cycle bit. Full power */
 			inv_i2c_single_write(st, REG_PWR_MGMT_1, 0x01);
-			usleep_range(50000, 51000);
+			msleep(50);
 			inv_i2c_single_write(st, REG_PWR_MGMT_2, 0x00);
 		}
 
@@ -1478,7 +1467,6 @@ static int inv_get_timestamp(struct inv_mpu_state *st, int count)
 	dur = &st->irq_dur_ns;
 	counter = 1;
 	thresh = min((u32)((*dur) >> 2), (u32)(10 * NSEC_PER_MSEC));
-
 	while (kfifo_len(&st->timestamps) >= count) {
 		result = kfifo_out(&st->timestamps, &ts, 1);
 		if (result != 1)

@@ -1619,20 +1619,6 @@ config MACH_HLLTE
 
 endif
 
-comment "sec sysfs Feature"
-config SEC_SYSFS
-	bool "Samsung sec sysfs Feature"
-	default y
-	help
-	  Samsung sysfs name 'sec' directory create.
-
-comment "Debugging Feature"
-menuconfig SEC_DEBUG
-	bool "Samsung TN Ramdump Feature"
-	default y
-	help
-	  Samsung TN Ramdump Feature. Use INFORM3 and magic number at 0xc0000000.
-
 config SAMSUNG_PRODUCT_SHIP
 	bool "set up for product shipping"
 	default n

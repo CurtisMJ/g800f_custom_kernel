@@ -96,7 +96,7 @@ enum {
 	FC_MFC_EXYNOS_ID_MFC_SH         = 0,
 #if defined(CONFIG_SOC_EXYNOS5410)
 	FC_MFC_EXYNOS_ID_FIMD_VIDEO	= 1,
-#elif defined(CONFIG_SOC_EXYNOS5420)
+#elif defined(CONFIG_SOC_EXYNOS5420) || defined(CONFIG_SOC_EXYNOS3470)
 	FC_MFC_EXYNOS_ID_VIDEO          = 1,
 #endif
 	FC_MFC_EXYNOS_ID_MFC_INPUT      = 2,
@@ -231,6 +231,7 @@ struct s5p_mfc_pm {
 	atomic_t	power;
 	struct device	*device;
 	spinlock_t	clklock;
+	int		clock_on_steps;
 };
 
 struct s5p_mfc_fw {
