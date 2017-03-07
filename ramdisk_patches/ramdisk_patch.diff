@@ -19,7 +19,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_direc model_rd/res/uci_p/actio
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/dac_direct;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_direct |  sed -n -e '/DAC direct/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_direct |  /res/busybox sed -n -e '/DAC direct/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_over model_rd/res/uci_p/actions/boefflasnd_dac_over
 --- old_rd/res/uci_p/actions/boefflasnd_dac_over	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_dac_over	2016-04-20 20:02:35.339494170 +0200
@@ -28,14 +28,14 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_dac_over model_rd/res/uci_p/action
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/dac_oversampling;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_oversampling |  sed -n -e '/DAC oversampling/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/dac_oversampling | /res/busybox sed -n -e '/DAC oversampling/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_eq model_rd/res/uci_p/actions/boefflasnd_eq
 --- old_rd/res/uci_p/actions/boefflasnd_eq	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_eq	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,11 @@
 +#!/system/bin/sh
 +EQ_NODE="/sys/devices/virtual/misc/boeffla_sound/eq_gains"
-+EQ_RAW=`cat $EQ_NODE |  sed -n -e '/EQ gains/ s/.*\: *//p'`;
++EQ_RAW=`cat $EQ_NODE | /res/busybox sed -n -e '/EQ gains/ s/.*\: *//p'`;
 +arreq=(`echo ${EQ_RAW}`);
 +if [[ ! -z $1 ]];then
 +	if [[ ! -z $2 ]]; then
@@ -52,7 +52,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_fll model_rd/res/uci_p/actions/boe
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/fll_tuning;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/fll_tuning |  sed -n -e '/FLL tuning/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/fll_tuning | /res/busybox sed -n -e '/FLL tuning/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_headeq model_rd/res/uci_p/actions/boefflasnd_headeq
 --- old_rd/res/uci_p/actions/boefflasnd_headeq	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_headeq	2016-04-20 20:02:35.339494170 +0200
@@ -61,17 +61,17 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_headeq model_rd/res/uci_p/actions/
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/eq;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/eq |  sed -n -e '/EQ/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/eq | /res/busybox sed -n -e '/EQ/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_headvol model_rd/res/uci_p/actions/boefflasnd_headvol
 --- old_rd/res/uci_p/actions/boefflasnd_headvol	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_headvol	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,27 @@
 +#!/system/bin/sh
 +RAW="/sys/devices/virtual/misc/boeffla_sound/headphone_volume";
-+LEFT_RAW=`cat $RAW | sed -n '2p'`;
-+RIGHT_RAW=`cat $RAW | sed -n '3p'`;
-+LEFT=`echo $LEFT_RAW |  sed -n -e '/Left/ s/.*\: *//p'`;
-+RIGHT=`echo $RIGHT_RAW |  sed -n -e '/Right/ s/.*\: *//p'`;
++LEFT_RAW=`cat $RAW | /res/busybox sed -n '2p'`;
++RIGHT_RAW=`cat $RAW | /res/busybox sed -n '3p'`;
++LEFT=`echo $LEFT_RAW |  /res/busybox sed -n -e '/Left/ s/.*\: *//p'`;
++RIGHT=`echo $RIGHT_RAW |  /res/busybox sed -n -e '/Right/ s/.*\: *//p'`;
 +if [[ ! -z $1 ]];then
 +	if [[ ! -z $2 ]];then
 +		case $1 in
@@ -101,7 +101,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_mono model_rd/res/uci_p/actions/bo
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/mono_downmix;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/mono_downmix |  sed -n -e '/Mono downmix/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/mono_downmix | /res/busybox sed -n -e '/Mono downmix/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_privmode model_rd/res/uci_p/actions/boefflasnd_privmode
 --- old_rd/res/uci_p/actions/boefflasnd_privmode	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_privmode	2016-04-20 20:02:35.339494170 +0200
@@ -110,7 +110,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_privmode model_rd/res/uci_p/action
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/privacy_mode;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/privacy_mode |  sed -n -e '/Privacy mode/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/privacy_mode | /res/busybox sed -n -e '/Privacy mode/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_run model_rd/res/uci_p/actions/boefflasnd_run
 --- old_rd/res/uci_p/actions/boefflasnd_run	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_run	2016-04-20 20:02:35.339494170 +0200
@@ -119,7 +119,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_run model_rd/res/uci_p/actions/boe
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/boeffla_sound;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/boeffla_sound |  sed -n -e '/Boeffla sound status/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/boeffla_sound | /res/busybox sed -n -e '/Boeffla sound status/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_speakeq model_rd/res/uci_p/actions/boefflasnd_speakeq
 --- old_rd/res/uci_p/actions/boefflasnd_speakeq	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_speakeq	2016-04-20 20:02:35.339494170 +0200
@@ -128,17 +128,17 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_speakeq model_rd/res/uci_p/actions
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/speaker_tuning;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/speaker_tuning |  sed -n -e '/Speaker tuning/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/speaker_tuning | /res/busybox sed -n -e '/Speaker tuning/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/boefflasnd_speakvol model_rd/res/uci_p/actions/boefflasnd_speakvol
 --- old_rd/res/uci_p/actions/boefflasnd_speakvol	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/boefflasnd_speakvol	2016-04-20 20:02:35.339494170 +0200
 @@ -0,0 +1,33 @@
 +#!/system/bin/sh
 +RAW="/sys/devices/virtual/misc/boeffla_sound/speaker_volume";
-+LEFT_RAW=`cat $RAW | sed -n '2p'`;
-+RIGHT_RAW=`cat $RAW | sed -n '3p'`;
-+LEFT=`echo $LEFT_RAW |  sed -n -e '/Left/ s/.*\: *//p'`;
-+RIGHT=`echo $RIGHT_RAW |  sed -n -e '/Right/ s/.*\: *//p'`;
++LEFT_RAW=`cat $RAW | /res/busybox sed -n '2p'`;
++RIGHT_RAW=`cat $RAW | /res/busybox sed -n '3p'`;
++LEFT=`echo $LEFT_RAW |  /res/busybox sed -n -e '/Left/ s/.*\: *//p'`;
++RIGHT=`echo $RIGHT_RAW |  /res/busybox sed -n -e '/Right/ s/.*\: *//p'`;
 +if [[ ! -z $1 ]];then
 +	if [[ ! -z $2 ]];then
 +		case $1 in
@@ -174,7 +174,7 @@ diff -urN old_rd/res/uci_p/actions/boefflasnd_stereoexp model_rd/res/uci_p/actio
 +if [[ ! -z $1 ]];then
 +	echo $1 > /sys/devices/virtual/misc/boeffla_sound/stereo_expansion;
 +fi
-+echo `cat /sys/devices/virtual/misc/boeffla_sound/stereo_expansion |  sed -n -e '/Stereo expansion/ s/.*\: *//p'`;
++echo `cat /sys/devices/virtual/misc/boeffla_sound/stereo_expansion | /res/busybox sed -n -e '/Stereo expansion/ s/.*\: *//p'`;
 diff -urN old_rd/res/uci_p/actions/bracket-option model_rd/res/uci_p/actions/bracket-option
 --- old_rd/res/uci_p/actions/bracket-option	1970-01-01 02:00:00.000000000 +0200
 +++ model_rd/res/uci_p/actions/bracket-option	2016-04-20 20:02:35.339494170 +0200
@@ -185,7 +185,7 @@ diff -urN old_rd/res/uci_p/actions/bracket-option model_rd/res/uci_p/actions/bra
 +        echo $2 > $1
 +    fi
 +    allSched=`cat $1`;
-+	currSched=`expr match "$allSched" '.*\[\(.*\)\].*'`;
++	currSched=`/res/busybox expr match "$allSched" '.*\[\(.*\)\].*'`;
 +	echo "$currSched";
 +fi
 diff -urN old_rd/res/uci_p/actions/busvolt model_rd/res/uci_p/actions/busvolt
@@ -229,7 +229,7 @@ diff -urN old_rd/res/uci_p/actions/cpufreq model_rd/res/uci_p/actions/cpufreq
 @@ -0,0 +1,24 @@
 +#!/system/bin/sh
 +FREQRAW=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq`;
-+FREQ=`expr $FREQRAW / 1000`;
++FREQ=`/res/busybox expr $FREQRAW / 1000`;
 +CORE0="$FREQ mhz";
 +ONLINE=`cat /sys/devices/system/cpu/cpu1/online`
 +CORE1="offline";
@@ -353,7 +353,7 @@ diff -urN old_rd/res/uci_p/actions/gpuvolt model_rd/res/uci_p/actions/gpuvolt
 +		if [ $count2 -eq 2 ];then
 +			let count2=0;
 +			if [ $i == $1 ];then
-+				echo ${arrvolt[`expr $count + 1`]}
++				echo ${arrvolt[`/res/busybox expr $count + 1`]}
 +				break
 +			fi
 +		fi
@@ -386,9 +386,9 @@ diff -urN old_rd/res/uci_p/actions/mdnie model_rd/res/uci_p/actions/mdnie
 +		b=`echo $hexinput | cut -c3-4`
 +		c=`echo $hexinput | cut -c5-6`
 +
-+		r=`printf "%d" 0x$a`
-+		g=`printf "%d" 0x$b`
-+		b=`printf "%d" 0x$c`
++		r=`/res/busybox printf "%d" 0x$a`
++		g=`/res/busybox printf "%d" 0x$b`
++		b=`/res/busybox printf "%d" 0x$c`
 +		
 +        echo $r > $file_r
 +        echo $g > $file_g
@@ -397,9 +397,9 @@ diff -urN old_rd/res/uci_p/actions/mdnie model_rd/res/uci_p/actions/mdnie
 +    r1=`cat $file_r`
 +    g1=`cat $file_g`
 +    b1=`cat $file_b`
-+	rhex1=`printf "%02x" $r1` 
-+	ghex1=`printf "%02x" $g1` 
-+	bhex1=`printf "%02x" $b1` 
++	rhex1=`/res/busybox printf "%02x" $r1` 
++	ghex1=`/res/busybox printf "%02x" $g1` 
++	bhex1=`/res/busybox printf "%02x" $b1` 
 +	hexout="#$rhex1$ghex1$bhex1"
 +	hexout1=`echo $hexout | tr '[:lower:]' '[:upper:]'`
 +	echo $hexout1
@@ -410,7 +410,7 @@ diff -urN old_rd/res/uci_p/actions/thermal model_rd/res/uci_p/actions/thermal
 @@ -0,0 +1,4 @@
 +#!/system/bin/sh
 +TEMP=`cat /sys/devices/virtual/thermal/thermal_zone0/curr_temp`;
-+TEMP2=`expr $TEMP / 10`
++TEMP2=`/res/busybox expr $TEMP / 10`
 +echo "$TEMP2 C°"
 diff -urN old_rd/res/uci_p/config.json model_rd/res/uci_p/config.json
 --- old_rd/res/uci_p/config.json	1970-01-01 02:00:00.000000000 +0200
